@@ -6,29 +6,54 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class IrnssDataService {
 
-    @Value("${irnss.file1-path}")
-    private String file1Path;
+    @Value("${irnss.file1-folder}")
+    private String file1Folder;
 
-    @Value("${irnss.file2-path}")
-    private String file2Path;
+    @Value("${irnss.file2-folder}")
+    private String file2Folder;
 
     @Autowired
     private IrnssDataRepository repository;
 
-
     public void processFiles() throws IOException {
-        processFile(Paths.get(file1Path), "IRLMB");
-        processFile(Paths.get(file2Path), "IRNPLI");
+        processFolder(Paths.get(file1Folder));
+        processFolder(Paths.get(file2Folder));
+    }
+
+    public void processFolder(Path folderPath) throws IOException {
+        if (!Files.exists(folderPath) || !Files.isDirectory(folderPath)) {
+            System.out.println("Folder does not exist: " + folderPath);
+            return;
+        }
+
+        List<Path> files = Files.list(folderPath)
+                .filter(Files::isRegularFile)
+                .sorted(Comparator.comparing(Path::getFileName))
+                .collect(Collectors.toList());
+
+        for (Path file : files) {
+            String filename = file.getFileName().toString();
+            FileInfo fileInfo = extractSourceAndMJD(filename);
+            if (fileInfo == null) continue;
+
+            // Skip if data already exists for MJD and source
+            boolean exists = repository.existsByMjdAndSource(fileInfo.mjd, fileInfo.source);
+            if (!exists) {
+                System.out.println("Processing file: " + filename);
+                processFile(file, fileInfo.source);
+            }
+        }
     }
 
     public void processFile(Path filePath, String sourceLabel) throws IOException {
@@ -37,24 +62,10 @@ public class IrnssDataService {
 
         for (int i = 19; i < lines.size(); i++) {
             String line = lines.get(i).trim();
-            if (line.isEmpty()) {
-                System.out.println("Skipping empty line at " + i);
-                continue;
-            }
-            if (!Character.isDigit(line.charAt(0))) {
-                System.out.println("Skipping non-data line: " + line);
-                continue;
-            }
+            if (line.isEmpty() || !Character.isDigit(line.charAt(0))) continue;
 
-            String[] tokens = line.trim().split("\\s+");
-            System.out.println("Line " + i + " token count: " + tokens.length);
-            System.out.println("Content: " + Arrays.toString(tokens));
-
-            // Skip lines with fewer than 26 tokens
-            if (tokens.length < 25) {
-                System.out.println("Skipping line with insufficient tokens: " + Arrays.toString(tokens));
-                continue;
-            }
+            String[] tokens = line.split("\\s+");
+            if (tokens.length < 25) continue;
 
             IrnssData data = new IrnssData();
             data.setSat(Integer.parseInt(tokens[0]));
@@ -79,22 +90,38 @@ public class IrnssDataService {
             data.setIsg(Integer.parseInt(tokens[19]));
             data.setFr(Integer.parseInt(tokens[20]));
             data.setHc(Integer.parseInt(tokens[21]));
-            data.setFrc(tokens[22]);  // Use String for FRC
-            data.setCk(tokens[23]);   // CK is a String (e.g., "LSC")
-            data.setIonType(tokens[24]);         // "28"
-                     // "DUAL"
-
-            // Assign the source file name correctly
+            data.setFrc(tokens[22]);
+            data.setCk(tokens[23]);
+            data.setIonType(tokens[24]);
             data.setSource(sourceLabel);
 
-            System.out.println("Saving: " + data);
-            System.out.println("Saving entry: SAT = " + data.getSat() + ", MJD = " + data.getMjd());
             repository.save(data);
         }
     }
 
-
     private int parseSignedInt(String str) {
         return Integer.parseInt(str.replace("+", ""));
+    }
+
+    private FileInfo extractSourceAndMJD(String filename) {
+        if (filename.length() < 7) return null;
+        String source = filename.substring(0, 6);
+        String mjdPart = filename.replaceAll("[^0-9]", " ");
+        Scanner scanner = new Scanner(mjdPart);
+        if (scanner.hasNextInt()) {
+            int mjd = scanner.nextInt();
+            return new FileInfo(source, mjd);
+        }
+        return null;
+    }
+
+    private static class FileInfo {
+        String source;
+        int mjd;
+
+        FileInfo(String source, int mjd) {
+            this.source = source;
+            this.mjd = mjd;
+        }
     }
 }

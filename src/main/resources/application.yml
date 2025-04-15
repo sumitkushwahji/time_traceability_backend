@@ -17,6 +17,6 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 irnss:
-  file1-path: C:/Users/sumit/Desktop/Angular19/IRLMB160.775
-  file2-path: C:/Users/sumit/Desktop/Angular19/IRNPLI60.775
+  file1-folder: C:/Users/sumit/Desktop/Angular19
+  file2-folder: C:/Users/sumit/Desktop/Angular19
 

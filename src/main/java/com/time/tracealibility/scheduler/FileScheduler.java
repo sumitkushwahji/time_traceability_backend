@@ -1,3 +1,4 @@
+// FileScheduler.java
 package com.time.tracealibility.scheduler;
 
 import com.time.tracealibility.services.IrnssDataService;
@@ -11,7 +12,7 @@ public class FileScheduler {
     @Autowired
     private IrnssDataService irnssDataService;
 
-    @Scheduled(fixedRate = 15000)
+    @Scheduled(fixedRate = 20000)
     public void runScheduledTask() {
         try {
             System.out.println("Running IRNSS file parser...");
