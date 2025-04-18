@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.Immutable;
 
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "sat_common_view_difference")
@@ -28,7 +27,7 @@ public class SatCommonViewDifference {
     private String sttime;
 
     @Column(name = "mjd_date_time")
-    private OffsetDateTime mjdDateTime;
+    private LocalDateTime mjdDateTime;
 
     @Column(name = "source1")
     private String source1;
@@ -105,11 +104,11 @@ public class SatCommonViewDifference {
         this.sttime = sttime;
     }
 
-    public OffsetDateTime getMjdDateTime() {
+    public LocalDateTime getMjdDateTime() {
         return mjdDateTime;
     }
 
-    public void setMjdDateTime(OffsetDateTime mjdDateTime) {
+    public void setMjdDateTime(LocalDateTime mjdDateTime) {
         this.mjdDateTime = mjdDateTime;
     }
 

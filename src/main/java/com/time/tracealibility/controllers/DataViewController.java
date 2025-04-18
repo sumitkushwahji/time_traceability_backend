@@ -11,11 +11,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
-
-import java.time.*;
 import java.util.List;
 
 @RestController
@@ -72,46 +69,17 @@ public class DataViewController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestParam(defaultValue = "") String search,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endDate
+            @RequestParam(defaultValue = "") String search
     ) {
-        Sort sort = sortDir.equalsIgnoreCase("desc")
-                ? Sort.by(sortBy).descending()
-                : Sort.by(sortBy).ascending();
+        Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        // Convert startDate and endDate to UTC midnight if needed
-        if (startDate != null) {
-            // Adjust the startDate to 00:00:00.000Z in UTC
-            startDate = startDate.withHour(0).withMinute(0).withSecond(0).withNano(0);
-        }
-
-        if (endDate != null) {
-            // Adjust the endDate to 23:59:59.999999999Z in UTC
-            endDate = endDate.withHour(23).withMinute(59).withSecond(59).withNano(999999999);
-        }
-
-        // If no endDate provided, adjust the end date to the end of the selected day
-        if (startDate != null && endDate == null) {
-            endDate = startDate.plusDays(1).minusNanos(1); // End of the selected day
-        }
-
         if (search == null || search.trim().isEmpty()) {
-            if (startDate != null && endDate != null) {
-                return satCommonViewDifferenceRepository.findByDateRange(startDate, endDate, pageable);
-            }
             return satCommonViewDifferenceRepository.findAll(pageable);
         } else {
-            return satCommonViewDifferenceRepository.searchAllWithDateRange(search.trim().toLowerCase(), startDate, endDate, pageable);
+            return satCommonViewDifferenceRepository.searchAll(search.trim().toLowerCase(), pageable);
         }
     }
-
-
-
-
-
-
 
 
 }
