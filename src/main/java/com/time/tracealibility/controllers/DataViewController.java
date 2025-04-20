@@ -1,18 +1,22 @@
 package com.time.tracealibility.controllers;
 
+import com.time.tracealibility.dto.SourceSessionStatusDTO;
 import com.time.tracealibility.entity.IrnssData;
 import com.time.tracealibility.entity.IrnssDataView;
 import com.time.tracealibility.entity.SatCommonViewDifference;
 import com.time.tracealibility.repository.IrnssDataRepository;
 import com.time.tracealibility.repository.IrnssDataViewRepository;
 import com.time.tracealibility.repository.SatCommonViewDifferenceRepository;
+import com.time.tracealibility.services.IrnssDataService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -22,6 +26,9 @@ public class DataViewController {
 
     @Autowired
     private IrnssDataRepository irnssDataRepository;
+
+    @Autowired
+    private IrnssDataService irnssDataService;
 
     @Autowired
     private IrnssDataViewRepository irnssDataViewRepository;
@@ -85,6 +92,21 @@ public class DataViewController {
         );
     }
 
+
+    @GetMapping("/session-completeness")
+    public ResponseEntity<List<SourceSessionStatusDTO>> getSessionCompleteness(
+            @RequestParam(required = false) String mjd) {
+
+        if (mjd == null) {
+            LocalDate today = LocalDate.now();
+            mjd = String.valueOf(today.toEpochDay() + 40587); // Convert date to MJD
+        }
+
+        List<SourceSessionStatusDTO> result = irnssDataService.getSessionCompleteness(mjd);
+        return ResponseEntity.ok(result);
+    }
+
+//
 
 
 }

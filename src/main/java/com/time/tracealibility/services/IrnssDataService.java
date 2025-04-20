@@ -1,5 +1,6 @@
 package com.time.tracealibility.services;
 
+import com.time.tracealibility.dto.SourceSessionStatusDTO;
 import com.time.tracealibility.entity.IrnssData;
 import com.time.tracealibility.repository.IrnssDataRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -124,4 +125,10 @@ public class IrnssDataService {
             this.mjd = mjd;
         }
     }
+
+
+    public List<SourceSessionStatusDTO> getSessionCompleteness(String mjd) {
+        return repository.findSessionCountsByMjd(mjd);
+    }
+
 }
