@@ -69,17 +69,22 @@ public class DataViewController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestParam(defaultValue = "") String search
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
     ) {
         Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        if (search == null || search.trim().isEmpty()) {
-            return satCommonViewDifferenceRepository.findAll(pageable);
-        } else {
-            return satCommonViewDifferenceRepository.searchAll(search.trim().toLowerCase(), pageable);
-        }
+        // Call new query method
+        return satCommonViewDifferenceRepository.searchAllWithDateFilter(
+                search.trim().toLowerCase(),
+                startDate,
+                endDate,
+                pageable
+        );
     }
+
 
 
 }
