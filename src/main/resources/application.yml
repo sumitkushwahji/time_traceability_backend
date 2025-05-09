@@ -4,8 +4,8 @@ server:
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/rrsl
-    username: admin
-    password: admin
+    username: postgres
+    password: postgres
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -17,6 +17,5 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 irnss:
-  file1-folder: C:/Users/sumit/Desktop/Angular19
-  file2-folder: C:/Users/sumit/Desktop/Angular19
+  parent-folder: /home/time-tracebility/time_traceability_rrsl/file
 

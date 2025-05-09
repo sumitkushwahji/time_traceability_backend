@@ -2,66 +2,72 @@ package com.time.tracealibility.services;
 
 import com.time.tracealibility.dto.SourceSessionStatusDTO;
 import com.time.tracealibility.entity.IrnssData;
+import com.time.tracealibility.entity.ProcessedFile;
 import com.time.tracealibility.repository.IrnssDataRepository;
+import com.time.tracealibility.repository.ProcessedFileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class IrnssDataService {
 
-    @Value("${irnss.file1-folder}")
-    private String file1Folder;
-
-    @Value("${irnss.file2-folder}")
-    private String file2Folder;
+    @Value("${irnss.parent-folder}")
+    private String parentFolder;
 
     @Autowired
     private IrnssDataRepository repository;
 
-    public void processFiles() throws IOException {
-        processFolder(Paths.get(file1Folder));
-        processFolder(Paths.get(file2Folder));
+    @Autowired
+    private ProcessedFileRepository processedFileRepository;
+
+    // Run every 5 minutes
+    @Scheduled(fixedRate = 300_000)
+    public void monitorLocationFolders() throws IOException {
+        Files.list(Paths.get(parentFolder))
+                .filter(Files::isDirectory)
+                .forEach(this::processLocationFolder);
     }
 
-    public void processFolder(Path folderPath) throws IOException {
-        if (!Files.exists(folderPath) || !Files.isDirectory(folderPath)) {
-            System.out.println("Folder does not exist: " + folderPath);
-            return;
-        }
+    private void processLocationFolder(Path locationFolder) {
+        try {
+            List<Path> allFiles = Files.list(locationFolder)
+                    .filter(Files::isRegularFile)
+                    .sorted(Comparator.comparing(this::extractMjdFromFilename).reversed())
+                    .limit(4)
+                    .collect(Collectors.toList());
 
-        List<Path> files = Files.list(folderPath)
-                .filter(Files::isRegularFile)
-                .sorted(Comparator.comparing(Path::getFileName))
-                .collect(Collectors.toList());
-
-        for (Path file : files) {
-            String filename = file.getFileName().toString();
-            FileInfo fileInfo = extractSourceAndMJD(filename);
-            if (fileInfo == null) continue;
-
-            // Skip if data already exists for MJD and source
-            boolean exists = repository.existsByMjdAndSource(fileInfo.mjd, fileInfo.source);
-            if (!exists) {
-                System.out.println("Processing file: " + filename);
-                processFile(file, fileInfo.source);
+            for (Path filePath : allFiles) {
+                FileInfo fileInfo = extractSourceAndMJD(filePath.getFileName().toString());
+                if (fileInfo != null) {
+                    processLiveFile(filePath, fileInfo.source, fileInfo.mjd);
+                }
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    public void processFile(Path filePath, String sourceLabel) throws IOException {
-        List<String> lines = Files.readAllLines(filePath);
+    private void processLiveFile(Path filePath, String source, int mjd) throws IOException {
+        List<String> lines = Files.readAllLines(filePath, StandardCharsets.UTF_8);
+
         if (lines.size() <= 19) return;
 
-        for (int i = 19; i < lines.size(); i++) {
+        String fileKey = filePath.toAbsolutePath().toString();
+        int lastProcessed = processedFileRepository.findById(fileKey)
+                .map(ProcessedFile::getLastLineProcessed)
+                .orElse(19); // Skip headers
+
+        int currentLine = lastProcessed;
+
+        for (int i = lastProcessed; i < lines.size(); i++) {
             String line = lines.get(i).trim();
             if (line.isEmpty() || !Character.isDigit(line.charAt(0))) continue;
 
@@ -94,9 +100,14 @@ public class IrnssDataService {
             data.setFrc(tokens[22]);
             data.setCk(tokens[23]);
             data.setIonType(tokens[24]);
-            data.setSource(sourceLabel);
-
+            data.setSource(source); // ✔ from filename
             repository.save(data);
+
+            currentLine = i + 1;
+        }
+
+        if (currentLine > lastProcessed) {
+            processedFileRepository.save(new ProcessedFile(fileKey, currentLine));
         }
     }
 
@@ -104,6 +115,12 @@ public class IrnssDataService {
         return Integer.parseInt(str.replace("+", ""));
     }
 
+    private int extractMjdFromFilename(Path path) {
+        FileInfo info = extractSourceAndMJD(path.getFileName().toString());
+        return (info != null) ? info.mjd : 0;
+    }
+
+    // ✔ Correct source/MJD extraction from filename
     private FileInfo extractSourceAndMJD(String filename) {
         if (filename.length() < 7) return null;
         String source = filename.substring(0, 6);
@@ -116,6 +133,7 @@ public class IrnssDataService {
         return null;
     }
 
+    // Optional DTO for source & MJD
     private static class FileInfo {
         String source;
         int mjd;
@@ -126,7 +144,7 @@ public class IrnssDataService {
         }
     }
 
-
+    // Public methods for dashboard/reporting
     public List<SourceSessionStatusDTO> getSessionCompleteness(String source, String mjd, Integer currentSessionCount, Integer expectedSessionCount) {
         return repository.findSessionCountsByFilters(source, mjd, currentSessionCount, expectedSessionCount);
     }
