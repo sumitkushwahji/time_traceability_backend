@@ -127,8 +127,11 @@ public class IrnssDataService {
     }
 
 
+    public List<SourceSessionStatusDTO> getSessionCompleteness(String source, String mjd, Integer currentSessionCount, Integer expectedSessionCount) {
+        return repository.findSessionCountsByFilters(source, mjd, currentSessionCount, expectedSessionCount);
+    }
+
     public List<SourceSessionStatusDTO> getSessionCompleteness(String mjd) {
         return repository.findSessionCountsByMjd(mjd);
     }
-
 }

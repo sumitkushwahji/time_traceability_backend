@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/data")
@@ -95,15 +96,24 @@ public class DataViewController {
 
     @GetMapping("/session-completeness")
     public ResponseEntity<List<SourceSessionStatusDTO>> getSessionCompleteness(
-            @RequestParam(required = false) String mjd) {
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String mjd,
+            @RequestParam(required = false) Integer currentSessionCount,
+            @RequestParam(required = false) Integer expectedSessionCount) {
 
-        if (mjd == null) {
-            LocalDate today = LocalDate.now();
-            mjd = String.valueOf(today.toEpochDay() + 40587); // Convert date to MJD
-        }
-
-        List<SourceSessionStatusDTO> result = irnssDataService.getSessionCompleteness(mjd);
+        List<SourceSessionStatusDTO> result = irnssDataService.getSessionCompleteness(source, mjd, currentSessionCount, expectedSessionCount);
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/available-mjds")
+    public ResponseEntity<List<String>> getAvailableMjds() {
+        List<Integer> mjds = irnssDataRepository.findAll().stream()
+                .map(IrnssData::getMjd)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        List<String> mjdStrings = mjds.stream().map(String::valueOf).collect(Collectors.toList());
+        return ResponseEntity.ok(mjdStrings);
     }
 
 //
