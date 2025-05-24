@@ -1,8 +1,10 @@
 package com.time.tracealibility.services;
 
 import com.time.tracealibility.dto.SourceSessionStatusDTO;
+import com.time.tracealibility.entity.FileAvailability;
 import com.time.tracealibility.entity.IrnssData;
 import com.time.tracealibility.entity.ProcessedFile;
+import com.time.tracealibility.repository.FileAvailabilityRepository;
 import com.time.tracealibility.repository.IrnssDataRepository;
 import com.time.tracealibility.repository.ProcessedFileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,9 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,10 +28,13 @@ public class IrnssDataService {
     private String parentFolder;
 
     @Autowired
-    private IrnssDataRepository repository;
+    private IrnssDataRepository irnssDataRepository;
 
     @Autowired
     private ProcessedFileRepository processedFileRepository;
+
+    @Autowired
+    private FileAvailabilityRepository fileAvailabilityRepository;
 
     // Run every 5 minutes
     @Scheduled(fixedRate = 300_000)
@@ -38,18 +46,43 @@ public class IrnssDataService {
 
     private void processLocationFolder(Path locationFolder) {
         try {
+            String source = locationFolder.getFileName().toString().toUpperCase(); // derive source
+
+            Set<Integer> foundMjdSet = new HashSet<>();
+
             List<Path> allFiles = Files.list(locationFolder)
                     .filter(Files::isRegularFile)
-                    .sorted(Comparator.comparing(this::extractMjdFromFilename).reversed())
-                    .limit(4)
                     .collect(Collectors.toList());
 
             for (Path filePath : allFiles) {
                 FileInfo fileInfo = extractSourceAndMJD(filePath.getFileName().toString());
                 if (fileInfo != null) {
+                    foundMjdSet.add(fileInfo.mjd);
+
+                    // Save as available
+                    fileAvailabilityRepository.save(
+                            new FileAvailability(null, source, fileInfo.mjd, "AVAILABLE",
+                                    filePath.getFileName().toString(), LocalDateTime.now())
+                    );
+
                     processLiveFile(filePath, fileInfo.source, fileInfo.mjd);
                 }
             }
+
+            // Check for missing MJDs in expected range
+            int todayMjd = (int) ChronoUnit.DAYS.between(LocalDate.of(1858, 11, 17), LocalDate.now());
+
+            for (int i = todayMjd - 3; i <= todayMjd; i++) {
+                if (!foundMjdSet.contains(i)) {
+                    Optional<FileAvailability> existing = fileAvailabilityRepository.findBySourceAndMjd(source, i);
+                    if (existing.isEmpty()) {
+                        fileAvailabilityRepository.save(
+                                new FileAvailability(null, source, i, "MISSING", null, LocalDateTime.now())
+                        );
+                    }
+                }
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -101,7 +134,7 @@ public class IrnssDataService {
             data.setCk(tokens[23]);
             data.setIonType(tokens[24]);
             data.setSource(source); // ✔ from filename
-            repository.save(data);
+            irnssDataRepository.save(data);
 
             currentLine = i + 1;
         }
@@ -146,10 +179,10 @@ public class IrnssDataService {
 
     // Public methods for dashboard/reporting
     public List<SourceSessionStatusDTO> getSessionCompleteness(String source, String mjd, Integer currentSessionCount, Integer expectedSessionCount) {
-        return repository.findSessionCountsByFilters(source, mjd, currentSessionCount, expectedSessionCount);
+        return irnssDataRepository.findSessionCountsByFilters(source, mjd, currentSessionCount, expectedSessionCount);
     }
 
     public List<SourceSessionStatusDTO> getSessionCompleteness(String mjd) {
-        return repository.findSessionCountsByMjd(mjd);
+        return irnssDataRepository.findSessionCountsByMjd(mjd);
     }
 }

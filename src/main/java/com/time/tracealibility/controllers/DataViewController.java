@@ -1,9 +1,11 @@
 package com.time.tracealibility.controllers;
 
 import com.time.tracealibility.dto.SourceSessionStatusDTO;
+import com.time.tracealibility.entity.FileAvailability;
 import com.time.tracealibility.entity.IrnssData;
 import com.time.tracealibility.entity.IrnssDataView;
 import com.time.tracealibility.entity.SatCommonViewDifference;
+import com.time.tracealibility.repository.FileAvailabilityRepository;
 import com.time.tracealibility.repository.IrnssDataRepository;
 import com.time.tracealibility.repository.IrnssDataViewRepository;
 import com.time.tracealibility.repository.SatCommonViewDifferenceRepository;
@@ -36,6 +38,17 @@ public class DataViewController {
 
     @Autowired
     private SatCommonViewDifferenceRepository satCommonViewDifferenceRepository;
+
+    @Autowired
+    private FileAvailabilityRepository fileAvailabilityRepository;
+
+    @GetMapping("/file-availability")
+    public List<FileAvailability> getAll(
+            @RequestParam int startMjd,
+            @RequestParam int endMjd
+    ) {
+        return fileAvailabilityRepository.findByMjdBetween(startMjd, endMjd);
+    }
 
     // --- IRNSS DATA (table) ---
     @GetMapping("/irnss")
