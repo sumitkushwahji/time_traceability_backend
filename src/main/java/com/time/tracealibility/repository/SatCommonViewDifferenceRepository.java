@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 public interface SatCommonViewDifferenceRepository extends JpaRepository<SatCommonViewDifference, String> {
 
     @Query(
@@ -85,6 +88,17 @@ public interface SatCommonViewDifferenceRepository extends JpaRepository<SatComm
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable
+    );
+
+
+    @Query("SELECT s FROM SatCommonViewDifference s WHERE " +
+            "(s.mjdDateTime >= COALESCE(:startDate, s.mjdDateTime)) AND " +
+            "(s.mjdDateTime <= COALESCE(:endDate, s.mjdDateTime)) AND " +
+            "(s.source1 = COALESCE(:source1, s.source1))")
+    List<SatCommonViewDifference> findByFilters(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("source1") String source1
     );
 
 

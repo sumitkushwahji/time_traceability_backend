@@ -1,5 +1,6 @@
 package com.time.tracealibility.controllers;
 
+import com.time.tracealibility.dto.PivotedSatDiffDTO;
 import com.time.tracealibility.dto.SourceSessionStatusDTO;
 import com.time.tracealibility.entity.FileAvailability;
 import com.time.tracealibility.entity.IrnssData;
@@ -10,15 +11,18 @@ import com.time.tracealibility.repository.IrnssDataRepository;
 import com.time.tracealibility.repository.IrnssDataViewRepository;
 import com.time.tracealibility.repository.SatCommonViewDifferenceRepository;
 import com.time.tracealibility.services.IrnssDataService;
+import com.time.tracealibility.services.SatCommonViewDifferenceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +42,9 @@ public class DataViewController {
 
     @Autowired
     private SatCommonViewDifferenceRepository satCommonViewDifferenceRepository;
+
+    @Autowired
+    private SatCommonViewDifferenceService service;
 
     @Autowired
     private FileAvailabilityRepository fileAvailabilityRepository;
@@ -129,6 +136,15 @@ public class DataViewController {
         return ResponseEntity.ok(mjdStrings);
     }
 
+
+    @GetMapping("/sat-differences-pivoted")
+    public List<PivotedSatDiffDTO> getPivotedSatDifferences(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) String source1
+    ) {
+        return service.getPivotedSatDifferences(startDate, endDate, source1);
+    }
 //
 
 
