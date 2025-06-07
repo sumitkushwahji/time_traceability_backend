@@ -1,8 +1,10 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/webquiz
-    username: admin
-    password: admin
+    url: jdbc:postgresql://172.16.26.45:5432/rrsl
+    username: postgres
+    password: postgres
   jpa:
     hibernate:
       ddl-auto: update
+server:
+  port: 6002
