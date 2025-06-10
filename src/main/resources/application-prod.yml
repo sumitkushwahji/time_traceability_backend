@@ -1,9 +1,13 @@
+irnss:
+  parent-folder: /home/npl/time-traceability-files
+
 spring:
   datasource:
-    url: jdbc:postgresql://host.docker.internal:5432/webquiz2
-    username: admin
-    password: admin
+    url: jdbc:postgresql://192.168.251.111:5432/rrsl
+    username: postgres
+    password: postgres
   jpa:
     hibernate:
       ddl-auto: update
-                                          
+server:
+  port: 5002

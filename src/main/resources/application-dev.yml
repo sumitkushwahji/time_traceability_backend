@@ -1,3 +1,6 @@
+irnss:
+  parent-folder: /home/time-tracebility/time_traceability_rrsl/file
+
 spring:
   datasource:
     url: jdbc:postgresql://172.16.26.45:5432/rrsl

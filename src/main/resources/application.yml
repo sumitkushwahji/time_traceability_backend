@@ -1,5 +1,3 @@
-irnss:
-  parent-folder: /home/time-tracebility/time_traceability_rrsl/file
 server:
   servlet:
     context-path: /time-traceability-service
@@ -12,7 +10,7 @@ server:
 #    key-alias: your_alias
 spring:
   profiles:
-    active: dev
+    active: prod
   jackson:
     serialization:
       FAIL_ON_EMPTY_BEANS: false
