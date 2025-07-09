@@ -18,6 +18,10 @@ public class IrnssData {
     private Long id;
 
     private int sat;
+
+
+
+    private String satId;
     private String cl;
     private int mjd;
     private String sttime;
@@ -50,11 +54,13 @@ public class IrnssData {
 
     // Getters and Setters
 
+
     @Override
     public String toString() {
         return "IrnssData{" +
                 "id=" + id +
                 ", sat=" + sat +
+                ", satId='" + satId + '\'' +
                 ", cl='" + cl + '\'' +
                 ", mjd=" + mjd +
                 ", sttime='" + sttime + '\'' +
@@ -84,6 +90,13 @@ public class IrnssData {
                 '}';
     }
 
+    public String getSatId() {
+        return satId;
+    }
+
+    public void setSatId(String satId) {
+        this.satId = satId;
+    }
     public int getSrsv() {
         return srsv;
     }
