@@ -97,21 +97,29 @@ public class DataViewController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestParam(defaultValue = "") String search,
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String satLetter,
+            @RequestParam(required = false) String source2
     ) {
         Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        // Call new query method
+        // Pass nulls if not specified to match query logic
+        String safeSearch = (search == null || search.isBlank()) ? null : search.trim().toLowerCase();
+        String safeStartDate = (startDate == null || startDate.isBlank()) ? null : startDate;
+        String safeEndDate = (endDate == null || endDate.isBlank()) ? null : endDate;
+        String safeSatLetter = (satLetter == null || satLetter.isBlank()) ? null : satLetter;
+        String safeSource2 = (source2 == null || source2.isBlank()) ? null : source2;
+
         return satCommonViewDifferenceRepository.searchAllWithDateFilter(
-                search.trim().toLowerCase(),
-                startDate,
-                endDate,
-                pageable
+                safeSearch, safeStartDate, safeEndDate, safeSatLetter, safeSource2, pageable
         );
     }
+
+
+
 
 
     @GetMapping("/session-completeness")

@@ -46,49 +46,57 @@ public interface SatCommonViewDifferenceRepository extends JpaRepository<SatComm
 
     @Query(
             value = "SELECT * FROM sat_common_view_difference s " +
-                    "WHERE " +
-                    "(" +
-                    "   CAST(s.sat_letter AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.mjd AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.common_sattelite AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.sttime AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.mjd_date_time AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.source1 AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.source2 AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.avg1 AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.avg2 AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.avg_refsys_difference AS TEXT) ILIKE %:search%" +
+                    "WHERE (" +
+                    "   :search IS NULL OR " +
+                    "   CAST(s.sat_letter AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.mjd AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.common_sattelite AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.sttime AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.mjd_date_time AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.source1 AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.source2 AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.avg1 AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.avg2 AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.avg_refsys_difference AS TEXT) ILIKE CONCAT('%', :search, '%')" +
                     ") " +
-                    "AND " +
-                    "(:startDate IS NULL OR s.mjd_date_time >= CAST(:startDate AS TIMESTAMP)) " +
-                    "AND " +
-                    "(:endDate IS NULL OR s.mjd_date_time <= CAST(:endDate AS TIMESTAMP))",
-            countQuery = "SELECT count(*) FROM sat_common_view_difference s " +
-                    "WHERE " +
-                    "(" +
-                    "   CAST(s.sat_letter AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.mjd AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.common_sattelite AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.sttime AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.mjd_date_time AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.source1 AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.source2 AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.avg1 AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.avg2 AS TEXT) ILIKE %:search% OR " +
-                    "   CAST(s.avg_refsys_difference AS TEXT) ILIKE %:search%" +
+                    "AND (:startDate IS NULL OR s.mjd_date_time >= CAST(:startDate AS TIMESTAMP)) " +
+                    "AND (:endDate IS NULL OR s.mjd_date_time <= CAST(:endDate AS TIMESTAMP)) " +
+                    "AND (:satLetter IS NULL OR s.sat_letter = :satLetter) " +
+                    "AND (:source2 IS NULL OR s.source2 IN (:source2))",
+
+
+    countQuery = "SELECT count(*) FROM sat_common_view_difference s " +
+                    "WHERE (" +
+                    "   :search IS NULL OR " +
+                    "   CAST(s.sat_letter AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.mjd AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.common_sattelite AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.sttime AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.mjd_date_time AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.source1 AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.source2 AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.avg1 AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.avg2 AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
+                    "   CAST(s.avg_refsys_difference AS TEXT) ILIKE CONCAT('%', :search, '%')" +
                     ") " +
-                    "AND " +
-                    "(:startDate IS NULL OR s.mjd_date_time >= CAST(:startDate AS TIMESTAMP)) " +
-                    "AND " +
-                    "(:endDate IS NULL OR s.mjd_date_time <= CAST(:endDate AS TIMESTAMP))",
+                    "AND (:startDate IS NULL OR s.mjd_date_time >= CAST(:startDate AS TIMESTAMP)) " +
+                    "AND (:endDate IS NULL OR s.mjd_date_time <= CAST(:endDate AS TIMESTAMP)) " +
+                    "AND (:satLetter IS NULL OR s.sat_letter = :satLetter) " +
+                    "AND (:source2 IS NULL OR s.source2 IN (:source2))",
+
             nativeQuery = true
     )
     Page<SatCommonViewDifference> searchAllWithDateFilter(
             @Param("search") String search,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
+            @Param("satLetter") String satLetter,
+            @Param("source2") String source2,
             Pageable pageable
     );
+
+
+
 
 
     @Query("SELECT s FROM SatCommonViewDifference s WHERE " +
