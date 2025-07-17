@@ -61,11 +61,10 @@ public interface SatCommonViewDifferenceRepository extends JpaRepository<SatComm
                     ") " +
                     "AND (:startDate IS NULL OR s.mjd_date_time >= CAST(:startDate AS TIMESTAMP)) " +
                     "AND (:endDate IS NULL OR s.mjd_date_time <= CAST(:endDate AS TIMESTAMP)) " +
-                    "AND (:satLetter IS NULL OR s.sat_letter = :satLetter) " +
-                    "AND (:source2 IS NULL OR s.source2 IN (:source2))",
+                    "AND (:satLetter IS NULL OR LOWER(s.sat_letter) = LOWER(:satLetter)) " + // Changed to LOWER for robustness
+                    "AND (:#{#source2 == null} OR s.source2 IN (:source2))", // Changed to use SpEL for List null check
 
-
-    countQuery = "SELECT count(*) FROM sat_common_view_difference s " +
+            countQuery = "SELECT count(*) FROM sat_common_view_difference s " +
                     "WHERE (" +
                     "   :search IS NULL OR " +
                     "   CAST(s.sat_letter AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
@@ -81,8 +80,8 @@ public interface SatCommonViewDifferenceRepository extends JpaRepository<SatComm
                     ") " +
                     "AND (:startDate IS NULL OR s.mjd_date_time >= CAST(:startDate AS TIMESTAMP)) " +
                     "AND (:endDate IS NULL OR s.mjd_date_time <= CAST(:endDate AS TIMESTAMP)) " +
-                    "AND (:satLetter IS NULL OR s.sat_letter = :satLetter) " +
-                    "AND (:source2 IS NULL OR s.source2 IN (:source2))",
+                    "AND (:satLetter IS NULL OR LOWER(s.sat_letter) = LOWER(:satLetter)) " + // Changed to LOWER for robustness
+                    "AND (:#{#source2 == null} OR s.source2 IN (:source2))", // Changed to use SpEL for List null check
 
             nativeQuery = true
     )
@@ -91,10 +90,9 @@ public interface SatCommonViewDifferenceRepository extends JpaRepository<SatComm
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             @Param("satLetter") String satLetter,
-            @Param("source2") String source2,
+            @Param("source2") List<String> source2, // 🎯 Changed to List<String>
             Pageable pageable
     );
-
 
 
 

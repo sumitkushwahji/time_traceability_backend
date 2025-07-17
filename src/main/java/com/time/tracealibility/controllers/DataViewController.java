@@ -101,23 +101,24 @@ public class DataViewController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String satLetter,
-            @RequestParam(required = false) String source2
+            @RequestParam(required = false) List<String> source2 // 🎯 Changed to List<String>
     ) {
         Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        // Pass nulls if not specified to match query logic
         String safeSearch = (search == null || search.isBlank()) ? null : search.trim().toLowerCase();
         String safeStartDate = (startDate == null || startDate.isBlank()) ? null : startDate;
         String safeEndDate = (endDate == null || endDate.isBlank()) ? null : endDate;
-        String safeSatLetter = (satLetter == null || satLetter.isBlank()) ? null : satLetter;
-        String safeSource2 = (source2 == null || source2.isBlank()) ? null : source2;
+        // 🎯 Ensure 'ALL' or blank/null from frontend maps to null for the query
+        String safeSatLetter = (satLetter == null || satLetter.isBlank() || "ALL".equalsIgnoreCase(satLetter.trim())) ? null : satLetter.trim();
+
+        // 🎯 If source2 list is empty, treat as null for the query
+        List<String> safeSource2 = (source2 == null || source2.isEmpty()) ? null : source2;
 
         return satCommonViewDifferenceRepository.searchAllWithDateFilter(
                 safeSearch, safeStartDate, safeEndDate, safeSatLetter, safeSource2, pageable
         );
     }
-
 
 
 
