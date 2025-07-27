@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Set variables
-IMAGE_NAME="tracealibility"
-CONTAINER_NAME="tracealibility"
+IMAGE_NAME="time-traceability-backend-dev"
+CONTAINER_NAME="time-traceability-backend-dev"
 DOCKER_IMAGE="maven:3.9.9-amazoncorretto-17"
 
 # Step 3: Pull the required Maven Docker image
@@ -33,8 +33,8 @@ docker rmi $IMAGE_ID
 # Step 8: Deploy the new container
 echo "🚀 Deploying the new Docker container..."
 docker run -d \
-  --restart always \
   --network host \
+  -v /home/time-tracebility/time_traceability_rrsl/data:/common-view-data \
   --name $CONTAINER_NAME \
   $IMAGE_NAME:latest
 

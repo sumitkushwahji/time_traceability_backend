@@ -1,13 +1,13 @@
-irnss:
-  parent-folder: /home/time-tracebility/time_traceability_rrsl/file
+    irnss:
+      parent-folder: /common-view-data
 
-spring:
-  datasource:
-    url: jdbc:postgresql://172.16.26.45:5432/rrsl
-    username: postgres
-    password: postgres
-  jpa:
-    hibernate:
-      ddl-auto: update
-server:
-  port: 6002
+    spring:
+      datasource:
+        url: jdbc:postgresql://172.16.26.45:5432/time-traceability-hasura-dev
+        username: postgres
+        password: postgres
+      jpa:
+        hibernate:
+          ddl-auto: update
+    server:
+      port: 4002

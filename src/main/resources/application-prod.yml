@@ -1,5 +1,5 @@
 irnss:
-  parent-folder: /home/npl/time-traceability-files
+  parent-folder: /home/time-tracebility/time_traceability_rrsl/file2
 
 spring:
   datasource:

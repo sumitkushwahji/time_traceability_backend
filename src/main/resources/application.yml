@@ -1,7 +1,7 @@
 server:
   servlet:
     context-path: /time-traceability-service
-  port: 6002
+  port: 6003
 
 #  ssl:
 #    key-store: keystore.p12
@@ -10,7 +10,7 @@ server:
 #    key-alias: your_alias
 spring:
   profiles:
-    active: prod
+    active: dev
   jackson:
     serialization:
       FAIL_ON_EMPTY_BEANS: false
