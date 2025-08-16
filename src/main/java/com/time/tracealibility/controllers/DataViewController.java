@@ -120,6 +120,54 @@ public class DataViewController {
         );
     }
 
+    // 🚀 NEW OPTIMIZED ENDPOINTS FOR PERFORMANCE
+
+    /**
+     * Fast bulk data endpoint - similar to frontend fast component strategy
+     * Returns all data for location, frontend handles filtering
+     */
+    @GetMapping("/bulk-location-data")
+    public ResponseEntity<java.util.Map<String, Object>> getBulkLocationData(
+            @RequestParam List<String> source2,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        List<SatCommonViewDifference> data = satCommonViewDifferenceRepository.findBulkByLocationAndDateRange(
+            source2, startDate, endDate
+        );
+        
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("data", data);
+        response.put("totalElements", data.size());
+        response.put("cached", true);
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Optimized paginated endpoint using only indexed columns
+     */
+    @GetMapping("/optimized-sat-differences")
+    public ResponseEntity<Page<SatCommonViewDifference>> getOptimizedSatDifferences(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "mjdDateTime") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String satLetter,
+            @RequestParam List<String> source2
+    ) {
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<SatCommonViewDifference> result = satCommonViewDifferenceRepository.findOptimizedByLocationAndFilters(
+            source2, startDate, endDate, satLetter, pageable
+        );
+
+        return ResponseEntity.ok(result);
+    }
+
 
 
 

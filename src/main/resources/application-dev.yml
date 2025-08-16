@@ -1,13 +1,13 @@
     irnss:
-      parent-folder: /common-view-data
+      parent-folder: /home/bharath/files
 
     spring:
       datasource:
-        url: jdbc:postgresql://172.16.26.45:5432/time-traceability-hasura-dev
+        url: jdbc:postgresql://172.16.15.32:5432/time-traceability-hasura-dev
         username: postgres
         password: postgres
       jpa:
         hibernate:
           ddl-auto: update
-    server:
-      port: 4002
+#    server:
+#      port: 4002
