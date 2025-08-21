@@ -103,7 +103,10 @@ public class DataViewController {
             @RequestParam(required = false) String satLetter,
             @RequestParam(required = false) List<String> source2 // 🎯 Changed to List<String>
     ) {
-        Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+        // Map frontend field names to database column names for native queries
+        String dbSortField = mapSortFieldToDbColumn(sortBy);
+        
+        Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(dbSortField).descending() : Sort.by(dbSortField).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
         String safeSearch = (search == null || search.isBlank()) ? null : search.trim().toLowerCase();
@@ -118,6 +121,24 @@ public class DataViewController {
         return satCommonViewDifferenceRepository.searchAllWithDateFilter(
                 safeSearch, safeStartDate, safeEndDate, safeSatLetter, safeSource2, pageable
         );
+    }
+
+    /**
+     * Map frontend field names to database column names for native queries
+     */
+    private String mapSortFieldToDbColumn(String frontendField) {
+        switch (frontendField) {
+            case "mjdDateTime":
+                return "mjd_date_time";
+            case "satLetter":
+                return "sat_letter";
+            case "commonSattelite":
+                return "common_sattelite";
+            case "avgRefsysDifference":
+                return "avg_refsys_difference";
+            default:
+                return frontendField; // Return as-is for fields like "id", "mjd", "source1", "source2", etc.
+        }
     }
 
     // 🚀 NEW OPTIMIZED ENDPOINTS FOR PERFORMANCE
