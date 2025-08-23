@@ -21,16 +21,11 @@ public class StatisticsController {
     @Autowired
     private SimpleFileUploadStatisticsService fileUploadStatsService;
 
-    /**
-     * Get comprehensive file upload statistics
-     * Shows detailed information about which files were uploaded from which locations on which days
-     */
     @GetMapping("/file-upload-stats")
     public ResponseEntity<FileUploadStatsDTO> getFileUploadStatistics(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
     ) {
-        // Set default date range if not provided (last 30 days)
         if (startDate == null) {
             startDate = LocalDateTime.now().minusDays(30);
         }
@@ -42,9 +37,6 @@ public class StatisticsController {
         return ResponseEntity.ok(stats);
     }
 
-    /**
-     * Get file upload statistics for a specific location
-     */
     @GetMapping("/file-upload-stats/location/{locationName}")
     public ResponseEntity<FileUploadStatsDTO> getLocationFileUploads(
             @PathVariable String locationName
@@ -53,9 +45,6 @@ public class StatisticsController {
         return ResponseEntity.ok(stats);
     }
 
-    /**
-     * Get file upload statistics for a specific MJD
-     */
     @GetMapping("/file-upload-stats/mjd/{mjd}")
     public ResponseEntity<FileUploadStatsDTO> getMjdFileUploads(
             @PathVariable Integer mjd

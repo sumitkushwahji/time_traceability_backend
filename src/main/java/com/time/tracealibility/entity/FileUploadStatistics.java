@@ -1,9 +1,6 @@
 package com.time.tracealibility.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -13,9 +10,6 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "file_upload_statistics")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class FileUploadStatistics {
 
     @Id
@@ -34,4 +28,49 @@ public class FileUploadStatistics {
     private LocalDate dataDate;
     private Long totalRecords = 0L;
     private Double qualityScore = 0.0;
+
+    // Constructors
+    public FileUploadStatistics() {}
+
+    public FileUploadStatistics(Long id, String fileName, String locationName, String source2Code,
+                               Integer mjd, LocalDateTime uploadTimestamp, LocalDate dataDate,
+                               Long totalRecords, Double qualityScore) {
+        this.id = id;
+        this.fileName = fileName;
+        this.locationName = locationName;
+        this.source2Code = source2Code;
+        this.mjd = mjd;
+        this.uploadTimestamp = uploadTimestamp;
+        this.dataDate = dataDate;
+        this.totalRecords = totalRecords;
+        this.qualityScore = qualityScore;
+    }
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+
+    public String getLocationName() { return locationName; }
+    public void setLocationName(String locationName) { this.locationName = locationName; }
+
+    public String getSource2Code() { return source2Code; }
+    public void setSource2Code(String source2Code) { this.source2Code = source2Code; }
+
+    public Integer getMjd() { return mjd; }
+    public void setMjd(Integer mjd) { this.mjd = mjd; }
+
+    public LocalDateTime getUploadTimestamp() { return uploadTimestamp; }
+    public void setUploadTimestamp(LocalDateTime uploadTimestamp) { this.uploadTimestamp = uploadTimestamp; }
+
+    public LocalDate getDataDate() { return dataDate; }
+    public void setDataDate(LocalDate dataDate) { this.dataDate = dataDate; }
+
+    public Long getTotalRecords() { return totalRecords; }
+    public void setTotalRecords(Long totalRecords) { this.totalRecords = totalRecords; }
+
+    public Double getQualityScore() { return qualityScore; }
+    public void setQualityScore(Double qualityScore) { this.qualityScore = qualityScore; }
 }
