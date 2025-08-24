@@ -2,7 +2,7 @@ package com.time.tracealibility.controller;
 
 import com.time.tracealibility.dto.FileUploadStatsDTO;
 import com.time.tracealibility.entity.FileUploadStatistics;
-import com.time.tracealibility.services.SimpleFileUploadStatisticsService;
+import com.time.tracealibility.services.RealFileUploadStatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +19,7 @@ import java.util.List;
 public class StatisticsController {
 
     @Autowired
-    private SimpleFileUploadStatisticsService fileUploadStatsService;
+    private RealFileUploadStatisticsService fileUploadStatsService;
 
     /**
      * Get comprehensive file upload statistics

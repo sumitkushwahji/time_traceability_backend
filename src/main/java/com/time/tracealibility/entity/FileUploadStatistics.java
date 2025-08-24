@@ -30,7 +30,11 @@ public class FileUploadStatistics {
 
     private String source2Code;
     private Integer mjd;
-    private LocalDateTime uploadTimestamp;
+    
+    // File system timestamps
+    private LocalDateTime fileCreationTime;    // When file was created/received on PC
+    private LocalDateTime uploadTimestamp;     // When file was processed/uploaded to DB
+    
     private LocalDate dataDate;
     private Long totalRecords = 0L;
     private Double qualityScore = 0.0;

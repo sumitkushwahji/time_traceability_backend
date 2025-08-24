@@ -72,19 +72,41 @@ public class SimpleFileUploadStatisticsService {
                     FileUploadStatistics stat = new FileUploadStatistics();
                     stat.setId((long) sampleData.size() + 1);
                     
-                    // Generate filename
+                    // Generate filename with correct MJD
                     String fileType = fileTypes[(int)(Math.random() * fileTypes.length)];
                     int mjd = 60880 + (29 - day); // Recent MJDs
-                    stat.setFileName(location.substring(0, 4) + fileType + "60." + (800 + (int)(Math.random() * 100)));
+                    // Fix: Use the correct MJD in filename instead of random number
+                    String mjdInFilename = String.valueOf(mjd).substring(2); // Get last 3 digits of MJD
+                    stat.setFileName(location.substring(0, 4) + fileType + mjdInFilename + "." + String.format("%03d", (int)(Math.random() * 1000)));
                     stat.setLocationName(location);
                     stat.setSource2Code(location);
                     stat.setMjd(mjd);
                     
-                    // Random time within the day
-                    LocalDateTime fileTime = dayTime.withHour((int)(Math.random() * 24))
-                                                   .withMinute((int)(Math.random() * 60));
-                    stat.setUploadTimestamp(fileTime);
-                    stat.setDataDate(fileTime.toLocalDate());
+                    // File creation time - when file physically arrived on PC
+                    LocalDateTime fileCreationTime;
+                    if (day == 0) {
+                        // For today, files arrive throughout the day up to current time
+                        int maxHour = now.getHour();
+                        int randomHour = (int)(Math.random() * (maxHour + 1));
+                        int randomMinute = (int)(Math.random() * 60);
+                        if (randomHour == maxHour) {
+                            randomMinute = Math.min(randomMinute, now.getMinute());
+                        }
+                        fileCreationTime = dayTime.withHour(randomHour).withMinute(randomMinute).withSecond(0).withNano(0);
+                    } else {
+                        // For past days, files could arrive any time
+                        fileCreationTime = dayTime.withHour((int)(Math.random() * 24))
+                                                  .withMinute((int)(Math.random() * 60))
+                                                  .withSecond(0).withNano(0);
+                    }
+                    
+                    // Upload/processing time - typically happens shortly after file arrives
+                    // Add 5-30 minutes delay for processing
+                    LocalDateTime uploadProcessingTime = fileCreationTime.plusMinutes(5 + (int)(Math.random() * 25));
+                    
+                    stat.setFileCreationTime(fileCreationTime);    // When file arrived on PC
+                    stat.setUploadTimestamp(uploadProcessingTime); // When file was processed to DB
+                    stat.setDataDate(fileCreationTime.toLocalDate());
                     
                     // Random metrics
                     stat.setTotalRecords((long)(500 + Math.random() * 1500));
@@ -112,8 +134,8 @@ public class SimpleFileUploadStatisticsService {
 
     private List<FileUploadStatsDTO.DailyUploadStats> generateDailyStats(List<FileUploadStatistics> data) {
         Map<LocalDate, List<FileUploadStatistics>> dailyGroups = data.stream()
-            .filter(f -> f.getUploadTimestamp() != null)
-            .collect(Collectors.groupingBy(f -> f.getUploadTimestamp().toLocalDate()));
+            .filter(f -> f.getFileCreationTime() != null)
+            .collect(Collectors.groupingBy(f -> f.getFileCreationTime().toLocalDate()));
         
         return dailyGroups.entrySet().stream()
             .map(entry -> {
@@ -150,9 +172,9 @@ public class SimpleFileUploadStatisticsService {
                 loc.setFileCount((long) locationData.size());
                 loc.setTotalRecords(locationData.stream().mapToLong(f -> f.getTotalRecords() != null ? f.getTotalRecords() : 0).sum());
                 
-                // Get first and last upload timestamps
+                // Get first and last file creation timestamps (when files arrived)
                 List<LocalDateTime> timestamps = locationData.stream()
-                    .map(FileUploadStatistics::getUploadTimestamp)
+                    .map(FileUploadStatistics::getFileCreationTime)
                     .filter(Objects::nonNull)
                     .sorted()
                     .collect(Collectors.toList());
@@ -230,8 +252,8 @@ public class SimpleFileUploadStatisticsService {
 
     private List<FileUploadStatsDTO.HourlyUploadPattern> generateHourlyPatterns(List<FileUploadStatistics> data) {
         Map<Integer, List<FileUploadStatistics>> hourlyGroups = data.stream()
-            .filter(f -> f.getUploadTimestamp() != null)
-            .collect(Collectors.groupingBy(f -> f.getUploadTimestamp().getHour()));
+            .filter(f -> f.getFileCreationTime() != null)
+            .collect(Collectors.groupingBy(f -> f.getFileCreationTime().getHour()));
         
         long totalFiles = data.size();
         
@@ -293,8 +315,8 @@ public class SimpleFileUploadStatisticsService {
 
     private List<FileUploadStatsDTO.RecentFileUpload> generateRecentUploads(List<FileUploadStatistics> data) {
         return data.stream()
-            .filter(f -> f.getUploadTimestamp() != null)
-            .sorted(Comparator.comparing(FileUploadStatistics::getUploadTimestamp).reversed())
+            .filter(f -> f.getFileCreationTime() != null)
+            .sorted(Comparator.comparing(FileUploadStatistics::getFileCreationTime).reversed())
             .limit(10)
             .map(f -> {
                 FileUploadStatsDTO.RecentFileUpload recent = new FileUploadStatsDTO.RecentFileUpload();
@@ -302,7 +324,7 @@ public class SimpleFileUploadStatisticsService {
                 recent.setLocationName(f.getLocationName());
                 recent.setSource2Code(f.getSource2Code());
                 recent.setMjd(f.getMjd());
-                recent.setUploadTimestamp(f.getUploadTimestamp());
+                recent.setUploadTimestamp(f.getFileCreationTime());  // Show file creation time, not processing time
                 recent.setTotalRecords(f.getTotalRecords() != null ? f.getTotalRecords().intValue() : 0);
                 recent.setFileStatus("SUCCESS");
                 recent.setQualityScore(f.getQualityScore());
