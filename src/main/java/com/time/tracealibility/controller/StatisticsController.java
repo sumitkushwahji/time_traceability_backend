@@ -13,10 +13,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/statistics")
-@CrossOrigin(origins = {"http://localhost:4200", "http://127.0.0.1:4200"}, 
+@CrossOrigin(origins = {"http://localhost:4200", "http://127.0.0.1:4200"},
             methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS},
             allowCredentials = "true")
-public class StatisticsController {
+  public class StatisticsController {
 
     @Autowired
     private RealFileUploadStatisticsService fileUploadStatsService;
@@ -37,8 +37,8 @@ public class StatisticsController {
         if (endDate == null) {
             endDate = LocalDateTime.now();
         }
-        
-        FileUploadStatsDTO stats = fileUploadStatsService.generateFileUploadReport();
+
+        FileUploadStatsDTO stats = fileUploadStatsService.generateFileUploadReport(startDate, endDate);
         return ResponseEntity.ok(stats);
     }
 
