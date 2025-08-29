@@ -13,7 +13,7 @@ import java.util.List;
 public interface SatCommonViewDifferenceRepository extends JpaRepository<SatCommonViewDifference, String> {
 
     @Query(
-            value = "SELECT * FROM sat_common_view_difference s WHERE " +
+            value = "SELECT * FROM sat_common_view_difference_materialized s WHERE " +
                     "CAST(s.sat_letter AS TEXT) ILIKE %:search% OR " +
                     "CAST(s.mjd AS TEXT) ILIKE %:search% OR " +
                     "CAST(s.common_sattelite AS TEXT) ILIKE %:search% OR " +
@@ -24,7 +24,7 @@ public interface SatCommonViewDifferenceRepository extends JpaRepository<SatComm
                     "CAST(s.avg1 AS TEXT) ILIKE %:search% OR " +
                     "CAST(s.avg2 AS TEXT) ILIKE %:search% OR " +
                     "CAST(s.avg_refsys_difference AS TEXT) ILIKE %:search%",
-            countQuery = "SELECT count(*) FROM sat_common_view_difference s WHERE " +
+            countQuery = "SELECT count(*) FROM sat_common_view_difference_materialized s WHERE " +
                     "CAST(s.sat_letter AS TEXT) ILIKE %:search% OR " +
                     "CAST(s.mjd AS TEXT) ILIKE %:search% OR " +
                     "CAST(s.common_sattelite AS TEXT) ILIKE %:search% OR " +
@@ -45,7 +45,7 @@ public interface SatCommonViewDifferenceRepository extends JpaRepository<SatComm
 
 
     @Query(
-            value = "SELECT * FROM sat_common_view_difference s " +
+            value = "SELECT * FROM sat_common_view_difference_materialized s " +
                     "WHERE (" +
                     "   :search IS NULL OR " +
                     "   CAST(s.sat_letter AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
@@ -64,7 +64,7 @@ public interface SatCommonViewDifferenceRepository extends JpaRepository<SatComm
                     "AND (:satLetter IS NULL OR LOWER(s.sat_letter) = LOWER(:satLetter)) " + // Changed to LOWER for robustness
                     "AND (:#{#source2 == null} OR s.source2 IN (:source2))", // Changed to use SpEL for List null check
 
-            countQuery = "SELECT count(*) FROM sat_common_view_difference s " +
+            countQuery = "SELECT count(*) FROM sat_common_view_difference_materialized s " +
                     "WHERE (" +
                     "   :search IS NULL OR " +
                     "   CAST(s.sat_letter AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +

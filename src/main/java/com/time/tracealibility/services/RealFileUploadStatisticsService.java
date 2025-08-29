@@ -61,7 +61,7 @@ public class RealFileUploadStatisticsService {
                 COUNT(*) as total_records,
                 COUNT(DISTINCT source2) as unique_locations,
                 AVG(CASE WHEN ABS(avg_refsys_difference) <= 30 THEN 95 ELSE 75 END) as avg_quality
-            FROM sat_common_view_difference
+            FROM sat_common_view_difference_materialized
             WHERE mjd_date_time BETWEEN ? AND ?
             """;
 
@@ -89,7 +89,7 @@ public class RealFileUploadStatisticsService {
                 COUNT(*) as total_records,
                 COUNT(DISTINCT source2) as unique_locations,
                 AVG(CASE WHEN ABS(avg_refsys_difference) <= 30 THEN 95 ELSE 75 END) as avg_quality
-            FROM sat_common_view_difference
+            FROM sat_common_view_difference_materialized
             WHERE mjd_date_time BETWEEN ? AND ?
             GROUP BY DATE(mjd_date_time)
             ORDER BY upload_date DESC
@@ -123,7 +123,7 @@ public class RealFileUploadStatisticsService {
                 MIN(mjd_date_time) as first_upload,
                 MAX(mjd_date_time) as last_upload,
                 AVG(CASE WHEN ABS(avg_refsys_difference) <= 30 THEN 95 ELSE 75 END) as avg_quality
-            FROM sat_common_view_difference
+            FROM sat_common_view_difference_materialized
             WHERE mjd_date_time BETWEEN ? AND ?
             GROUP BY source2
             ORDER BY file_count DESC
@@ -157,7 +157,7 @@ public class RealFileUploadStatisticsService {
                 source2,
                 COUNT(DISTINCT mjd) as file_count,
                 COUNT(*) as total_records
-            FROM sat_common_view_difference
+            FROM sat_common_view_difference_materialized
             WHERE mjd_date_time BETWEEN ? AND ?
             GROUP BY source2
             """;
@@ -186,7 +186,7 @@ public class RealFileUploadStatisticsService {
                 EXTRACT(HOUR FROM mjd_date_time) as hour,
                 COUNT(DISTINCT CONCAT(source2, '_', mjd)) as file_count,
                 COUNT(*) as total_records
-            FROM sat_common_view_difference
+            FROM sat_common_view_difference_materialized
             WHERE mjd_date_time BETWEEN ? AND ?
             GROUP BY EXTRACT(HOUR FROM mjd_date_time)
             """;
@@ -234,7 +234,7 @@ public class RealFileUploadStatisticsService {
                 COUNT(DISTINCT mjd) as file_count,
                 COUNT(*) as avg_lines_processed,
                 AVG(CASE WHEN ABS(avg_refsys_difference) <= 30 THEN 95 ELSE 75 END) as quality
-            FROM sat_common_view_difference
+            FROM sat_common_view_difference_materialized
             WHERE mjd_date_time BETWEEN ? AND ?
             GROUP BY source2
             """;
@@ -279,7 +279,7 @@ public class RealFileUploadStatisticsService {
                 MAX(mjd_date_time) as upload_timestamp,
                 COUNT(*) as total_records,
                 AVG(CASE WHEN ABS(avg_refsys_difference) <= 30 THEN 95 ELSE 75 END) as quality_score
-            FROM sat_common_view_difference
+            FROM sat_common_view_difference_materialized
             WHERE mjd_date_time >= CURRENT_DATE - INTERVAL '7 days'
             GROUP BY source2, mjd
             ORDER BY MAX(mjd_date_time) DESC
