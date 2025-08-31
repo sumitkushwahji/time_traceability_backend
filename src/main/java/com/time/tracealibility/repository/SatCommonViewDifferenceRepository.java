@@ -1,5 +1,6 @@
 package com.time.tracealibility.repository;
 
+import com.time.tracealibility.entity.SatCombinedViewDifference;
 import com.time.tracealibility.entity.SatCommonViewDifference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -116,19 +117,19 @@ public interface SatCommonViewDifferenceRepository extends JpaRepository<SatComm
      * Optimized paginated query using materialized view with indexes
      */
     @Query(
-            value = "SELECT * FROM sat_common_view_difference_materialized s " +
+            value = "SELECT * FROM sat_combined_view_difference_materialized s " +
                     "WHERE (:#{#source2 == null} OR s.source2 IN (:source2)) " +
                     "AND (:startDate IS NULL OR s.mjd_date_time >= CAST(:startDate AS TIMESTAMP)) " +
                     "AND (:endDate IS NULL OR s.mjd_date_time <= CAST(:endDate AS TIMESTAMP)) " +
                     "AND (:satLetter IS NULL OR LOWER(s.sat_letter) = LOWER(:satLetter))",
-            countQuery = "SELECT count(*) FROM sat_common_view_difference_materialized s " +
+            countQuery = "SELECT count(*) FROM sat_combined_view_difference_materialized s " +
                     "WHERE (:#{#source2 == null} OR s.source2 IN (:source2)) " +
                     "AND (:startDate IS NULL OR s.mjd_date_time >= CAST(:startDate AS TIMESTAMP)) " +
                     "AND (:endDate IS NULL OR s.mjd_date_time <= CAST(:endDate AS TIMESTAMP)) " +
                     "AND (:satLetter IS NULL OR LOWER(s.sat_letter) = LOWER(:satLetter))",
             nativeQuery = true
     )
-    Page<SatCommonViewDifference> findOptimizedByLocationAndFilters(
+    Page<SatCombinedViewDifference> findOptimizedByLocationAndFilters(
             @Param("source2") List<String> source2,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,

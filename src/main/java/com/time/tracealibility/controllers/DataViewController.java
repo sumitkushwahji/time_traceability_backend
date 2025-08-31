@@ -2,10 +2,7 @@ package com.time.tracealibility.controllers;
 
 import com.time.tracealibility.dto.PivotedSatDiffDTO;
 import com.time.tracealibility.dto.SourceSessionStatusDTO;
-import com.time.tracealibility.entity.FileAvailability;
-import com.time.tracealibility.entity.IrnssData;
-import com.time.tracealibility.entity.IrnssDataView;
-import com.time.tracealibility.entity.SatCommonViewDifference;
+import com.time.tracealibility.entity.*;
 import com.time.tracealibility.repository.FileAvailabilityRepository;
 import com.time.tracealibility.repository.IrnssDataRepository;
 import com.time.tracealibility.repository.IrnssDataViewRepository;
@@ -169,7 +166,7 @@ public class DataViewController {
      * Optimized paginated endpoint using only indexed columns
      */
     @GetMapping("/optimized-sat-differences")
-    public ResponseEntity<Page<SatCommonViewDifference>> getOptimizedSatDifferences(
+    public ResponseEntity<Page<SatCombinedViewDifference>> getOptimizedSatDifferences(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(defaultValue = "mjdDateTime") String sortBy,
@@ -197,7 +194,7 @@ public class DataViewController {
 
       Pageable pageable = PageRequest.of(page, size, sort);
 
-      Page<SatCommonViewDifference> result = satCommonViewDifferenceRepository.findOptimizedByLocationAndFilters(
+      Page<SatCombinedViewDifference> result = satCommonViewDifferenceRepository.findOptimizedByLocationAndFilters(
         source2, startDate, endDate, satLetter, pageable
       );
 
