@@ -3,10 +3,7 @@ package com.time.tracealibility.controllers;
 import com.time.tracealibility.dto.PivotedSatDiffDTO;
 import com.time.tracealibility.dto.SourceSessionStatusDTO;
 import com.time.tracealibility.entity.*;
-import com.time.tracealibility.repository.FileAvailabilityRepository;
-import com.time.tracealibility.repository.IrnssDataRepository;
-import com.time.tracealibility.repository.IrnssDataViewRepository;
-import com.time.tracealibility.repository.SatCommonViewDifferenceRepository;
+import com.time.tracealibility.repository.*;
 import com.time.tracealibility.services.IrnssDataService;
 import com.time.tracealibility.services.SatCommonViewDifferenceService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +36,9 @@ public class DataViewController {
 
     @Autowired
     private SatCommonViewDifferenceRepository satCommonViewDifferenceRepository;
+
+    @Autowired
+    private SatPivotedViewRepository satPivotedViewRepository;
 
     @Autowired
     private SatCommonViewDifferenceService service;
@@ -235,7 +235,27 @@ public class DataViewController {
     ) {
         return service.getPivotedSatDifferences(startDate, endDate, source1);
     }
-//
+
+
+  @GetMapping("/pivoted-sat-data")
+  public ResponseEntity<Page<SatPivotedView>> getPivotedSatData(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "15") int size,
+    @RequestParam(defaultValue = "mjd_date_time") String sortBy,
+    @RequestParam(defaultValue = "desc") String sortDirection,
+    @RequestParam(required = false) String startDate,
+    @RequestParam(required = false) String endDate,
+    @RequestParam(required = false) String satLetter
+  ) {
+    Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
+    Pageable pageable = PageRequest.of(page, size, sort);
+
+    Page<SatPivotedView> result = satPivotedViewRepository.findByFilters(
+      startDate, endDate, (satLetter != null && !satLetter.equalsIgnoreCase("ALL")) ? satLetter : null, pageable
+    );
+
+    return ResponseEntity.ok(result);
+  }
 
 
 }
