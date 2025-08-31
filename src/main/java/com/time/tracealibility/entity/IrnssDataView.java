@@ -15,6 +15,7 @@ public class IrnssDataView {
     @Id
     private Long id;
 
+    @Column(name = "mjd_date_time")
     private LocalDateTime mjdDateTime;
     private String satLetter;
     private Integer satNumber;

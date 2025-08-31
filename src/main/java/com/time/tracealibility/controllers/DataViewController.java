@@ -105,7 +105,7 @@ public class DataViewController {
     ) {
         // Map frontend field names to database column names for native queries
         String dbSortField = mapSortFieldToDbColumn(sortBy);
-        
+
         Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(dbSortField).descending() : Sort.by(dbSortField).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -156,12 +156,12 @@ public class DataViewController {
         List<SatCommonViewDifference> data = satCommonViewDifferenceRepository.findBulkByLocationAndDateRange(
             source2, startDate, endDate
         );
-        
+
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("data", data);
         response.put("totalElements", data.size());
         response.put("cached", true);
-        
+
         return ResponseEntity.ok(response);
     }
 
@@ -170,23 +170,38 @@ public class DataViewController {
      */
     @GetMapping("/optimized-sat-differences")
     public ResponseEntity<Page<SatCommonViewDifference>> getOptimizedSatDifferences(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "mjdDateTime") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDirection,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String satLetter,
-            @RequestParam List<String> source2
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size,
+      @RequestParam(defaultValue = "mjdDateTime") String sortBy,
+      @RequestParam(defaultValue = "desc") String sortDirection,
+      @RequestParam(required = false) String startDate,
+      @RequestParam(required = false) String endDate,
+      @RequestParam(required = false) String satLetter,
+      @RequestParam List<String> source2
     ) {
-        Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
-        Pageable pageable = PageRequest.of(page, size, sort);
+      //
+      // --- FIX STARTS HERE ---
+      //
+      // Map the API's camelCase property name to the database's snake_case column name.
+      String sortColumn = sortBy;
+      if ("mjdDateTime".equalsIgnoreCase(sortBy)) {
+        sortColumn = "mjd_date_time";
+      }
+      // Add other mappings here if you sort by other columns with different names.
 
-        Page<SatCommonViewDifference> result = satCommonViewDifferenceRepository.findOptimizedByLocationAndFilters(
-            source2, startDate, endDate, satLetter, pageable
-        );
+      // Use the corrected sortColumn to build the Sort object.
+      Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortColumn);
+      //
+      // --- FIX ENDS HERE ---
+      //
 
-        return ResponseEntity.ok(result);
+      Pageable pageable = PageRequest.of(page, size, sort);
+
+      Page<SatCommonViewDifference> result = satCommonViewDifferenceRepository.findOptimizedByLocationAndFilters(
+        source2, startDate, endDate, satLetter, pageable
+      );
+
+      return ResponseEntity.ok(result);
     }
 
 
