@@ -10,7 +10,7 @@ server:
 #    key-alias: your_alias
 spring:
   profiles:
-    active: dev
+    active: prod
   jackson:
     serialization:
       FAIL_ON_EMPTY_BEANS: false

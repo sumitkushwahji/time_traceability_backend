@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Set variables
-IMAGE_NAME="tracealibility-prod"
-CONTAINER_NAME="tracealibility-prod"
+IMAGE_NAME="tracealibility-qa"
+CONTAINER_NAME="tracealibility-qa"
 DOCKER_IMAGE="maven:3.9.9-amazoncorretto-17"
 VERSION=$(git rev-parse --short HEAD)
 

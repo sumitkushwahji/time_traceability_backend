@@ -38,4 +38,6 @@ docker run -d \
   --name $CONTAINER_NAME \
   $IMAGE_NAME:latest
 
+sudo rm -rf target
+
 echo "✅ Deployment completed successfully!"

@@ -3,11 +3,11 @@ irnss:
 
 spring:
   datasource:
-    url: jdbc:postgresql://192.168.251.111:5432/time-traceability-hasura
+    url: jdbc:postgresql://192.168.251.111:5432/time-traceability-hasura-qa
     username: postgres
     password: postgres
   jpa:
     hibernate:
       ddl-auto: update
 server:
-  port: 5002
+  port: 3002
