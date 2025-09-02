@@ -24,17 +24,18 @@ spring:
   data:
     web:
       pageable:
-        default-page-size=10:
-        max-page-size=50:
+        default-page-size: 10
+        max-page-size: 50
 
 # Application specific configuration
 app:
   scheduler:
     materialized-view:
       enabled: true
-      refresh-interval: 3600000  # 1 hour in milliseconds (3600000ms = 60min)
-      # Alternative intervals:
-      # 1800000 = 30 minutes
-      # 900000 = 15 minutes
-      # 300000 = 5 minutes
+      refresh-interval: 300000  # 5 minutes in milliseconds (300000ms = 05min)
+      names:
+        - sat_common_view_difference_materialized
+        - sat_pivoted_view_materialized
+        - sat_combined_view_difference_materialized
+
 

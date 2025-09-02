@@ -1,194 +1,93 @@
 package com.time.tracealibility.scheduler;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
+import com.time.tracealibility.services.MaterializedViewService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Scheduler to automatically refresh the materialized view for optimal performance
- * Provides 219,000x performance improvement for location-based queries
- */
 @Component
 @ConditionalOnProperty(value = "app.scheduler.materialized-view.enabled", havingValue = "true", matchIfMissing = true)
 public class MaterializedViewScheduler {
 
-    private static final Logger logger = LoggerFactory.getLogger(MaterializedViewScheduler.class);
+  private static final Logger logger = LoggerFactory.getLogger(MaterializedViewScheduler.class);
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+  @Autowired
+  private MaterializedViewService materializedViewService;
 
-    @Value("${app.scheduler.materialized-view.refresh-interval:3600000}") // Default: 1 hour
-    private long refreshInterval;
+  // Inject the list of view names from application.yml
+  // TO: (Note the colon at the end of the property name)
+  @Value("${app.scheduler.materialized-view.names:}")
+  private List<String> viewNames;
 
-    private volatile boolean isRefreshing = false;
-    private long lastRefreshTime = 0;
-    private long lastRefreshDuration = 0;
-    private String lastRefreshStatus = "Not started";
+  // Use a thread-safe Map to store the status of each view
+  private final Map<String, Map<String, Object>> statuses = new ConcurrentHashMap<>();
+  private volatile boolean isJobRunning = false;
 
-    /**
-     * Refresh materialized view every hour to keep data up-to-date
-     * Configurable via application properties
-     */
-    @Scheduled(fixedRateString = "${app.scheduler.materialized-view.refresh-interval:3600000}") // Default: 1 hour
-    public void refreshMaterializedView() {
-        if (isRefreshing) {
-            logger.warn("Previous materialized view refresh still in progress, skipping this cycle");
-            return;
-        }
-
-        try {
-            isRefreshing = true;
-            lastRefreshTime = System.currentTimeMillis();
-            logger.info("🚀 Starting materialized view refresh...");
-            
-            long startTime = System.currentTimeMillis();
-            
-            // Check if materialized view exists
-            if (!materializedViewExists()) {
-                logger.error("❌ Materialized view 'sat_common_view_difference_materialized' does not exist!");
-                lastRefreshStatus = "Failed - View not found";
-                return;
-            }
-            
-            // Get row counts before refresh for comparison
-            Map<String, Object> beforeStats = getViewStats();
-            logger.info("📊 Before refresh - Rows: {}, Last updated: {}", 
-                beforeStats.get("row_count"), beforeStats.get("last_update"));
-            
-            // Refresh the materialized view
-            jdbcTemplate.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY sat_common_view_difference_materialized");
-            
-            // Update statistics for optimal query planning
-            jdbcTemplate.execute("ANALYZE sat_common_view_difference_materialized");
-            
-            // Get row counts after refresh
-            Map<String, Object> afterStats = getViewStats();
-            
-            long endTime = System.currentTimeMillis();
-            lastRefreshDuration = endTime - startTime;
-            
-            logger.info("✅ Materialized view refresh completed successfully!");
-            logger.info("⏱️  Duration: {} ms", lastRefreshDuration);
-            logger.info("📈 After refresh - Rows: {}, Performance optimized", afterStats.get("row_count"));
-            
-            // Test query performance
-            testQueryPerformance();
-            
-            lastRefreshStatus = "Success";
-            
-        } catch (Exception e) {
-            logger.error("❌ Error refreshing materialized view", e);
-            lastRefreshStatus = "Failed - " + e.getMessage();
-        } finally {
-            isRefreshing = false;
-        }
+  @Scheduled(fixedRateString = "${app.scheduler.materialized-view.refresh-interval}")
+  public void refreshAllMaterializedViews() {
+    if (isJobRunning) {
+      logger.warn("Previous refresh job still in progress. Skipping this cycle.");
+      return;
     }
 
-    /**
-     * Check if materialized view exists
-     */
-    private boolean materializedViewExists() {
-        try {
-            String sql = "SELECT COUNT(*) FROM pg_matviews WHERE matviewname = 'sat_common_view_difference_materialized'";
-            Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
-            return count != null && count > 0;
-        } catch (Exception e) {
-            logger.error("Error checking materialized view existence", e);
-            return false;
-        }
+    if (viewNames == null || viewNames.isEmpty()) {
+      logger.warn("No materialized views configured for refresh. Skipping job.");
+      return;
     }
 
-    /**
-     * Get statistics about the materialized view
-     */
-    private Map<String, Object> getViewStats() {
-        try {
-            String sql = "SELECT COUNT(*) as row_count, MAX(mjd_date_time) as last_update " +
-                        "FROM sat_common_view_difference_materialized";
-            return jdbcTemplate.queryForMap(sql);
-        } catch (Exception e) {
-            logger.error("Error getting view statistics", e);
-            return Map.of("row_count", "Unknown", "last_update", "Unknown");
-        }
+    isJobRunning = true;
+    logger.info("=============== 🔄 Starting Materialized View Refresh Job for {} views ===============", viewNames.size());
+
+    for (String viewName : viewNames) {
+      long startTime = System.currentTimeMillis();
+      try {
+        materializedViewService.refreshView(viewName);
+        long duration = System.currentTimeMillis() - startTime;
+        updateStatus(viewName, "Success", duration, null);
+      } catch (Exception e) {
+        long duration = System.currentTimeMillis() - startTime;
+        logger.error("❌ Failed to refresh view '{}' after {} ms", viewName, duration, e);
+        updateStatus(viewName, "Failed", duration, e.getMessage());
+      }
     }
 
-    /**
-     * Test query performance after refresh
-     */
-    private void testQueryPerformance() {
-        try {
-            long startTime = System.nanoTime();
-            
-            String testSql = "SELECT COUNT(*) FROM sat_common_view_difference_materialized " +
-                           "WHERE source2 IN ('FAR', 'BLR') " +
-                           "AND mjd_date_time >= CURRENT_DATE - INTERVAL '30 days'";
-            
-            Integer count = jdbcTemplate.queryForObject(testSql, Integer.class);
-            
-            long endTime = System.nanoTime();
-            double durationMs = (endTime - startTime) / 1_000_000.0;
-            
-            logger.info("🚀 Performance test: {} rows found in {:.3f} ms", count, durationMs);
-            
-            if (durationMs < 10.0) {
-                logger.info("🎉 Performance is excellent!");
-            } else if (durationMs < 100.0) {
-                logger.info("✅ Performance is good");
-            } else {
-                logger.warn("⚠️ Performance could be improved - consider checking indexes");
-            }
-            
-        } catch (Exception e) {
-            logger.error("Error testing query performance", e);
-        }
-    }
+    logger.info("=============== ✅ Materialized View Refresh Job Finished ===============\n");
+    isJobRunning = false;
+  }
 
-    /**
-     * Get scheduler status for monitoring
-     */
-    public Map<String, Object> getSchedulerStatus() {
-        return Map.of(
-            "isRefreshing", isRefreshing,
-            "lastRefreshTime", lastRefreshTime,
-            "lastRefreshDuration", lastRefreshDuration,
-            "lastRefreshStatus", lastRefreshStatus,
-            "refreshInterval", refreshInterval,
-            "nextRefreshIn", getNextRefreshIn()
-        );
+  private void updateStatus(String viewName, String status, long duration, String errorMessage) {
+    Map<String, Object> viewStatus = new ConcurrentHashMap<>();
+    viewStatus.put("lastRefreshStatus", status);
+    viewStatus.put("lastRefreshDurationMs", duration);
+    viewStatus.put("lastRefreshTimestamp", System.currentTimeMillis());
+    if (errorMessage != null) {
+      viewStatus.put("error", errorMessage);
     }
+    statuses.put(viewName, viewStatus);
+  }
 
-    private long getNextRefreshIn() {
-        if (lastRefreshTime == 0) {
-            return 0;
-        }
-        long nextRefreshTime = lastRefreshTime + refreshInterval;
-        long currentTime = System.currentTimeMillis();
-        return Math.max(0, nextRefreshTime - currentTime);
-    }
+  /**
+   * Get the status of all managed views for monitoring.
+   */
+  public Map<String, Map<String, Object>> getSchedulerStatus() {
+    return statuses;
+  }
 
-    /**
-     * Manual refresh endpoint for testing or immediate updates
-     */
-    public void manualRefresh() {
-        logger.info("🔧 Manual refresh triggered");
-        refreshMaterializedView();
-    }
-
-    /**
-     * Alternative: Refresh every 15 minutes for more frequent updates
-     * Uncomment this and comment the above method if you need more frequent updates
-     */
-    /*
-    @Scheduled(fixedRate = 900000) // Every 15 minutes
-    public void refreshMaterializedViewFrequent() {
-        refreshMaterializedView();
-    }
-    */
+  /**
+   * Manual refresh endpoint for testing or immediate updates.
+   */
+  public void manualRefresh() {
+    logger.info("🔧 Manual refresh triggered for all views.");
+    // Run in a new thread to avoid blocking the HTTP request
+    new Thread(this::refreshAllMaterializedViews).start();
+  }
 }

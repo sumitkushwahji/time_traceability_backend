@@ -1,65 +1,68 @@
 package com.time.tracealibility.controller;
 
+
 import com.time.tracealibility.scheduler.MaterializedViewScheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-/**
- * Controller for monitoring and controlling the materialized view scheduler
- */
 @RestController
 @RequestMapping("/api/scheduler")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*") // Configure for your specific needs in production
 public class SchedulerController {
 
-    @Autowired
-    private MaterializedViewScheduler materializedViewScheduler;
+  @Autowired
+  private MaterializedViewScheduler materializedViewScheduler;
 
-    /**
-     * Get current scheduler status
-     */
-    @GetMapping("/status")
-    public ResponseEntity<Map<String, Object>> getStatus() {
-        Map<String, Object> status = materializedViewScheduler.getSchedulerStatus();
-        return ResponseEntity.ok(status);
-    }
+  /**
+   * Gets the current status of all managed materialized views.
+   */
+  @GetMapping("/status")
+  public ResponseEntity<Map<String, Map<String, Object>>> getStatus() {
+    Map<String, Map<String, Object>> status = materializedViewScheduler.getSchedulerStatus();
+    return ResponseEntity.ok(status);
+  }
 
-    /**
-     * Manually trigger materialized view refresh
-     */
-    @PostMapping("/refresh")
-    public ResponseEntity<Map<String, String>> manualRefresh() {
-        try {
-            materializedViewScheduler.manualRefresh();
-            return ResponseEntity.ok(Map.of(
-                "status", "success",
-                "message", "Manual refresh triggered successfully"
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of(
-                "status", "error",
-                "message", "Failed to trigger refresh: " + e.getMessage()
-            ));
-        }
-    }
+  /**
+   * Manually triggers a refresh for all materialized views.
+   * The refresh runs in the background.
+   */
+  @PostMapping("/refresh")
+  public ResponseEntity<Map<String, String>> manualRefresh() {
+    materializedViewScheduler.manualRefresh();
+    return ResponseEntity.accepted().body(Map.of(
+      "status", "success",
+      "message", "Manual refresh job triggered for all views. Check /status for progress."
+    ));
+  }
 
-    /**
-     * Get scheduler health check
-     */
-    @GetMapping("/health")
-    public ResponseEntity<Map<String, Object>> getHealth() {
-        Map<String, Object> status = materializedViewScheduler.getSchedulerStatus();
-        
-        boolean isHealthy = !"Failed".startsWith((String) status.get("lastRefreshStatus"));
-        
-        return ResponseEntity.ok(Map.of(
-            "healthy", isHealthy,
-            "lastRefreshStatus", status.get("lastRefreshStatus"),
-            "lastRefreshTime", status.get("lastRefreshTime"),
-            "isCurrentlyRefreshing", status.get("isRefreshing")
-        ));
-    }
+  /**
+   * Provides a high-level health check of the refresh system.
+   * It's healthy if no views have a 'Failed' status.
+   */
+  @GetMapping("/health")
+  public ResponseEntity<Map<String, Object>> getHealth() {
+    Map<String, Map<String, Object>> statuses = materializedViewScheduler.getSchedulerStatus();
+
+    boolean isOverallHealthy = statuses.values().stream()
+      .noneMatch(viewStatus -> "Failed".equals(viewStatus.get("lastRefreshStatus")));
+
+    Map<String, Object> healthResponse = new HashMap<>();
+    healthResponse.put("overallStatus", isOverallHealthy ? "HEALTHY" : "UNHEALTHY");
+
+    // Provide a summary of each view's status for quick diagnostics
+    Map<String, String> viewSummary = statuses.entrySet().stream()
+      .collect(Collectors.toMap(
+        Map.Entry::getKey,
+        entry -> (String) entry.getValue().getOrDefault("lastRefreshStatus", "Pending")
+      ));
+
+    healthResponse.put("views", viewSummary);
+
+    return ResponseEntity.ok(healthResponse);
+  }
 }
