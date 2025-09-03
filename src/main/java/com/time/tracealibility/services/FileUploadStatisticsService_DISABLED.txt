@@ -1,3 +1,0 @@
-// This service was temporarily disabled due to compilation errors
-// The complex DTO structure needs proper constructor matching
-// Will be re-enabled after DTO structure is simplified
