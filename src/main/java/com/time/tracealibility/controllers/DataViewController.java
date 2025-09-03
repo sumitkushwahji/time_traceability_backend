@@ -1,22 +1,19 @@
 package com.time.tracealibility.controllers;
 
-import com.time.tracealibility.dto.PivotedSatDiffDTO;
 import com.time.tracealibility.dto.SourceSessionStatusDTO;
 import com.time.tracealibility.entity.*;
-import com.time.tracealibility.repository.*;
+import com.time.tracealibility.repository.IrnssDataRepository;
+import com.time.tracealibility.repository.SatCommonViewDifferenceRepository;
+import com.time.tracealibility.repository.SatPivotedViewRepository;
 import com.time.tracealibility.services.IrnssDataService;
-import com.time.tracealibility.services.SatCommonViewDifferenceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,8 +27,6 @@ public class DataViewController {
     @Autowired
     private IrnssDataService irnssDataService;
 
-    @Autowired
-    private IrnssDataViewRepository irnssDataViewRepository;
 
     @Autowired
     private SatCommonViewDifferenceRepository satCommonViewDifferenceRepository;
@@ -39,103 +34,7 @@ public class DataViewController {
     @Autowired
     private SatPivotedViewRepository satPivotedViewRepository;
 
-    @Autowired
-    private SatCommonViewDifferenceService service;
 
-    @Autowired
-    private FileAvailabilityRepository fileAvailabilityRepository;
-
-    @GetMapping("/file-availability")
-    public List<FileAvailability> getAll(
-            @RequestParam int startMjd,
-            @RequestParam int endMjd
-    ) {
-        return fileAvailabilityRepository.findByMjdBetween(startMjd, endMjd);
-    }
-
-    // --- IRNSS DATA (table) ---
-    @GetMapping("/irnss")
-    public List<IrnssData> getAllIrnssData() {
-        return irnssDataRepository.findAll();
-    }
-
-    @PostMapping("/irnss")
-    public IrnssData createIrnssData(@RequestBody IrnssData data) {
-        return irnssDataRepository.save(data);
-    }
-
-    @GetMapping("/irnss/{id}")
-    public IrnssData getIrnssDataById(@PathVariable Long id) {
-        return irnssDataRepository.findById(id).orElseThrow();
-    }
-
-    @PutMapping("/irnss/{id}")
-    public IrnssData updateIrnssData(@PathVariable Long id, @RequestBody IrnssData updatedData) {
-        IrnssData existing = irnssDataRepository.findById(id).orElseThrow();
-        updatedData.setId(id);
-        return irnssDataRepository.save(updatedData);
-    }
-
-    @DeleteMapping("/irnss/{id}")
-    public void deleteIrnssData(@PathVariable Long id) {
-        irnssDataRepository.deleteById(id);
-    }
-
-    // --- VIEWS ---
-    @GetMapping("/irnss-view")
-    public List<IrnssDataView> getIrnssDataView() {
-        return irnssDataViewRepository.findAll();
-    }
-
-    @GetMapping("/sat-differences")
-    public Page<SatCommonViewDifference> getSatCommonDifferences(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String satLetter,
-            @RequestParam(required = false) List<String> source2 // 🎯 Changed to List<String>
-    ) {
-        // Map frontend field names to database column names for native queries
-        String dbSortField = mapSortFieldToDbColumn(sortBy);
-
-        Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(dbSortField).descending() : Sort.by(dbSortField).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        String safeSearch = (search == null || search.isBlank()) ? null : search.trim().toLowerCase();
-        String safeStartDate = (startDate == null || startDate.isBlank()) ? null : startDate;
-        String safeEndDate = (endDate == null || endDate.isBlank()) ? null : endDate;
-        // 🎯 Ensure 'ALL' or blank/null from frontend maps to null for the query
-        String safeSatLetter = (satLetter == null || satLetter.isBlank() || "ALL".equalsIgnoreCase(satLetter.trim())) ? null : satLetter.trim();
-
-        // 🎯 If source2 list is empty, treat as null for the query
-        List<String> safeSource2 = (source2 == null || source2.isEmpty()) ? null : source2;
-
-        return satCommonViewDifferenceRepository.searchAllWithDateFilter(
-                safeSearch, safeStartDate, safeEndDate, safeSatLetter, safeSource2, pageable
-        );
-    }
-
-    /**
-     * Map frontend field names to database column names for native queries
-     */
-    private String mapSortFieldToDbColumn(String frontendField) {
-        switch (frontendField) {
-            case "mjdDateTime":
-                return "mjd_date_time";
-            case "satLetter":
-                return "sat_letter";
-            case "commonSattelite":
-                return "common_sattelite";
-            case "avgRefsysDifference":
-                return "avg_refsys_difference";
-            default:
-                return frontendField; // Return as-is for fields like "id", "mjd", "source1", "source2", etc.
-        }
-    }
 
     // 🚀 NEW OPTIMIZED ENDPOINTS FOR PERFORMANCE
 
@@ -223,16 +122,6 @@ public class DataViewController {
                 .collect(Collectors.toList());
         List<String> mjdStrings = mjds.stream().map(String::valueOf).collect(Collectors.toList());
         return ResponseEntity.ok(mjdStrings);
-    }
-
-
-    @GetMapping("/sat-differences-pivoted")
-    public List<PivotedSatDiffDTO> getPivotedSatDifferences(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @RequestParam(required = false) String source1
-    ) {
-        return service.getPivotedSatDifferences(startDate, endDate, source1);
     }
 
 
