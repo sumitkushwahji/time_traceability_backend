@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/scheduler")
-@CrossOrigin(origins = "*") // Configure for your specific needs in production
 public class SchedulerController {
 
   @Autowired

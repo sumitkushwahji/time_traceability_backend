@@ -120,11 +120,63 @@ AND sat_letter = 'GPS'
 ORDER BY mjd_date_time DESC 
 LIMIT 20;
 
--- 8. Analyze tables for better query planning
+-- 8. Create materialized views for high-performance queries
+-- Note: These should match the views configured in your application.properties
+
+-- Create materialized view for sat_common_view_difference
+CREATE MATERIALIZED VIEW IF NOT EXISTS sat_common_view_difference_materialized AS
+SELECT * FROM sat_common_view_difference;
+
+-- Create materialized view for sat_pivoted_view  
+CREATE MATERIALIZED VIEW IF NOT EXISTS sat_pivoted_view_materialized AS
+SELECT * FROM sat_pivoted_view;
+
+-- Create materialized view for sat_combined_view_difference
+CREATE MATERIALIZED VIEW IF NOT EXISTS sat_combined_view_difference_materialized AS
+SELECT * FROM sat_combined_view_difference;
+
+-- 9. Create UNIQUE indexes on materialized views for CONCURRENT refresh support
+-- PostgreSQL requires unique indexes to enable "REFRESH MATERIALIZED VIEW CONCURRENTLY"
+
+-- Unique index for sat_common_view_difference_materialized
+-- Using a combination of columns that should be unique per row
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sat_common_mat_unique 
+ON sat_common_view_difference_materialized(id);
+
+-- Unique index for sat_pivoted_view_materialized  
+-- Using the ID column which should be unique per row
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sat_pivoted_mat_unique 
+ON sat_pivoted_view_materialized(id);
+
+-- Unique index for sat_combined_view_difference_materialized
+-- Using the ID column which should be unique per row
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sat_combined_mat_unique 
+ON sat_combined_view_difference_materialized(id);
+
+-- 10. Create additional performance indexes on materialized views
+CREATE INDEX IF NOT EXISTS idx_sat_common_mat_mjd_datetime 
+ON sat_common_view_difference_materialized(mjd_date_time);
+
+CREATE INDEX IF NOT EXISTS idx_sat_common_mat_source2 
+ON sat_common_view_difference_materialized(source2);
+
+CREATE INDEX IF NOT EXISTS idx_sat_pivoted_mat_mjd_datetime 
+ON sat_pivoted_view_materialized(mjd_date_time);
+
+CREATE INDEX IF NOT EXISTS idx_sat_combined_mat_mjd_datetime 
+ON sat_combined_view_difference_materialized(mjd_date_time);
+
+CREATE INDEX IF NOT EXISTS idx_sat_combined_mat_source2 
+ON sat_combined_view_difference_materialized(source2);
+
+-- 11. Analyze tables for better query planning
 ANALYZE irnss_data;
 ANALYZE irnss_data_view;
+ANALYZE sat_common_view_difference_materialized;
+ANALYZE sat_pivoted_view_materialized;
+ANALYZE sat_combined_view_difference_materialized;
 
--- 9. Check existing indexes on base table
+-- 12. Check existing indexes on base table
 SELECT 
     indexname,
     indexdef

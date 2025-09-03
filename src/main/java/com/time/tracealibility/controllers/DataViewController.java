@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/data")
-@CrossOrigin
 public class DataViewController {
 
     @Autowired

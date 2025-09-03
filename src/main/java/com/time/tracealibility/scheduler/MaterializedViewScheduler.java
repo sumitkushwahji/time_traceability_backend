@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,14 +24,29 @@ public class MaterializedViewScheduler {
   @Autowired
   private MaterializedViewService materializedViewService;
 
-  // Inject the list of view names from application.yml
-  // TO: (Note the colon at the end of the property name)
-  @Value("${app.scheduler.materialized-view.names:}")
+  // Inject the list of view names using SpEL to split comma-separated values
+  @Value("#{'${app.scheduler.materialized-view.names:}'.split(',')}")
   private List<String> viewNames;
 
   // Use a thread-safe Map to store the status of each view
   private final Map<String, Map<String, Object>> statuses = new ConcurrentHashMap<>();
   private volatile boolean isJobRunning = false;
+
+  @PostConstruct
+  public void init() {
+    logger.info("🔧 MaterializedViewScheduler initialized");
+    logger.info("📝 Raw viewNames from SpEL: {}", viewNames);
+    logger.info("📝 ViewNames size: {}", viewNames != null ? viewNames.size() : "null");
+    
+    if (viewNames != null && !viewNames.isEmpty()) {
+      for (int i = 0; i < viewNames.size(); i++) {
+        String viewName = viewNames.get(i).trim();
+        logger.info("📝 View[{}]: '{}' (length: {})", i, viewName, viewName.length());
+      }
+    } else {
+      logger.error("❌ No view names loaded! ViewNames: {}", viewNames);
+    }
+  }
 
   @Scheduled(fixedRateString = "${app.scheduler.materialized-view.refresh-interval}")
   public void refreshAllMaterializedViews() {
@@ -39,15 +55,21 @@ public class MaterializedViewScheduler {
       return;
     }
 
-    if (viewNames == null || viewNames.isEmpty()) {
+    // Filter out empty view names that might result from splitting empty strings
+    List<String> validViewNames = viewNames.stream()
+        .map(String::trim)
+        .filter(name -> !name.isEmpty())
+        .toList();
+
+    if (validViewNames.isEmpty()) {
       logger.warn("No materialized views configured for refresh. Skipping job.");
       return;
     }
 
     isJobRunning = true;
-    logger.info("=============== 🔄 Starting Materialized View Refresh Job for {} views ===============", viewNames.size());
+    logger.info("=============== 🔄 Starting Materialized View Refresh Job for {} views ===============", validViewNames.size());
 
-    for (String viewName : viewNames) {
+    for (String viewName : validViewNames) {
       long startTime = System.currentTimeMillis();
       try {
         materializedViewService.refreshView(viewName);
