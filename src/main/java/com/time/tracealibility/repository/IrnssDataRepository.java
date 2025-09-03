@@ -13,14 +13,8 @@ import java.util.Optional;
 @Repository
 public interface IrnssDataRepository extends JpaRepository<IrnssData, Long> {
 
-    // Already present
-    boolean existsByMjdAndSource(int mjd, String source);
-
     // ✅ NEW: Check if specific data already exists (to avoid duplicate insert)
     boolean existsBySatAndMjdAndSttimeAndSource(int sat, int mjd, String sttime, String source);
-
-    // ✅ Optional: for upsert logic
-    Optional<IrnssData> findBySatAndMjdAndSttimeAndSource(int sat, int mjd, String sttime, String source);
 
     // Session count grouped by source and MJD
     @Query("""

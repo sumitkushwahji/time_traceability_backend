@@ -1,4 +1,4 @@
-package com.time.tracealibility.controller;
+package com.time.tracealibility.controllers;
 
 
 import com.time.tracealibility.scheduler.MaterializedViewScheduler;

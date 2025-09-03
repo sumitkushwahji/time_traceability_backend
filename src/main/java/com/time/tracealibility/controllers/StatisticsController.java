@@ -1,4 +1,4 @@
-package com.time.tracealibility.controller;
+package com.time.tracealibility.controllers;
 
 import com.time.tracealibility.dto.FileUploadStatsDTO;
 import com.time.tracealibility.entity.FileUploadStatistics;
@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/statistics")
