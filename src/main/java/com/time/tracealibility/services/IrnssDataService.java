@@ -246,14 +246,26 @@ public class IrnssDataService {
 
     private FileInfo extractSourceAndMJD(String filename) {
         if (filename.length() < 7) return null;
+        
+        // Extract source (first 6 characters)
         String source = filename.substring(0, 6);
-        String mjdPart = filename.replaceAll("[^0-9]", " ");
-        try (Scanner scanner = new Scanner(mjdPart)) {
-            if (scanner.hasNextInt()) {
-                int mjd = scanner.nextInt();
+        
+        // For files like GZLI2P60.866, we need to extract 60866 as MJD
+        // Look for the pattern after the source: number.number
+        String remainingPart = filename.substring(6);
+        
+        // Remove all non-digits and concatenate them
+        String allDigits = remainingPart.replaceAll("[^0-9]", "");
+        
+        try {
+            if (!allDigits.isEmpty()) {
+                int mjd = Integer.parseInt(allDigits);
                 return new FileInfo(source, mjd);
             }
+        } catch (NumberFormatException e) {
+            System.err.println("Error parsing MJD from filename: " + filename);
         }
+        
         return null;
     }
 
