@@ -1,7 +1,7 @@
 package com.time.tracealibility.controllers;
 
 import com.time.tracealibility.dto.FileUploadStatsDTO;
-import com.time.tracealibility.entity.FileUploadStatistics;
+
 import com.time.tracealibility.services.RealFileUploadStatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
