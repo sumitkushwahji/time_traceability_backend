@@ -57,8 +57,9 @@ public class IrnssDataService {
 
     private void processLocationFolder(Path locationFolder) {
         try {
-            String source = locationFolder.getFileName().toString().toUpperCase();
+            String folderName = locationFolder.getFileName().toString().toUpperCase();
             Set<Integer> foundMjdSet = new HashSet<>();
+            Map<String, Set<Integer>> sourceToMjdMap = new HashMap<>(); // Track MJDs by source
 
             List<Path> allFiles = Files.walk(locationFolder)
                     .filter(Files::isRegularFile)
@@ -73,15 +74,20 @@ public class IrnssDataService {
                     })
                     .collect(Collectors.toList());
 
-            System.out.println("Processing " + allFiles.size() + " files in location: " + source);
+            System.out.println("Processing " + allFiles.size() + " files in folder: " + folderName);
 
             for (Path filePath : allFiles) {
                 try {
                     FileInfo fileInfo = extractSourceAndMJD(filePath.getFileName().toString());
                     if (fileInfo != null) {
                         foundMjdSet.add(fileInfo.mjd);
+                        
+                        // Track MJDs by source for missing file detection
+                        sourceToMjdMap.computeIfAbsent(fileInfo.source, k -> new HashSet<>()).add(fileInfo.mjd);
+                        
+                        // Use source from filename, not folder name
                         fileAvailabilityRepository.save(
-                                new FileAvailability(null, source, fileInfo.mjd, "AVAILABLE",
+                                new FileAvailability(null, fileInfo.source, fileInfo.mjd, "AVAILABLE",
                                         filePath.getFileName().toString(), LocalDateTime.now())
                         );
                         processLiveFile(filePath, fileInfo.source, fileInfo.mjd);
@@ -92,15 +98,18 @@ public class IrnssDataService {
                 }
             }
 
-            // Missing file detection logic
+            // Missing file detection logic - check for each source found in files
             int todayMjd = (int) ChronoUnit.DAYS.between(LocalDate.of(1858, 11, 17), LocalDate.now());
-            for (int i = todayMjd - 3; i <= todayMjd; i++) {
-                if (!foundMjdSet.contains(i)) {
-                    Optional<FileAvailability> existing = fileAvailabilityRepository.findBySourceAndMjd(source, i);
-                    if (existing.isEmpty()) {
-                        fileAvailabilityRepository.save(
-                                new FileAvailability(null, source, i, "MISSING", null, LocalDateTime.now())
-                        );
+            for (String source : sourceToMjdMap.keySet()) {
+                Set<Integer> sourceMjds = sourceToMjdMap.get(source);
+                for (int i = todayMjd - 3; i <= todayMjd; i++) {
+                    if (!sourceMjds.contains(i)) {
+                        Optional<FileAvailability> existing = fileAvailabilityRepository.findBySourceAndMjd(source, i);
+                        if (existing.isEmpty()) {
+                            fileAvailabilityRepository.save(
+                                    new FileAvailability(null, source, i, "MISSING", null, LocalDateTime.now())
+                            );
+                        }
                     }
                 }
             }

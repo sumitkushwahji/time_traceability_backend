@@ -67,10 +67,11 @@ public class RealFileUploadStatisticsService {
 
         Map<String, Object> result = jdbcTemplate.queryForMap(sql, startDate, endDate);
 
-        summary.setTotalFiles(((Number) result.get("total_files")).longValue());
-        summary.setTotalRecords(((Number) result.get("total_records")).longValue());
-        summary.setUniqueLocations(((Number) result.get("unique_locations")).intValue());
-        summary.setAverageQuality(((Number) result.get("avg_quality")).doubleValue());
+        // Use helper methods to safely extract values
+        summary.setTotalFiles(safeLongValue(result, "total_files"));
+        summary.setTotalRecords(safeLongValue(result, "total_records"));
+        summary.setUniqueLocations(safeIntValue(result, "unique_locations"));
+        summary.setAverageQuality(safeDoubleValue(result, "avg_quality"));
         summary.setReportPeriodStart(startDate);
         summary.setReportPeriodEnd(endDate);
         summary.setLastGenerated(LocalDateTime.now());
@@ -101,10 +102,10 @@ public class RealFileUploadStatisticsService {
             FileUploadStatsDTO.DailyUploadStats daily = new FileUploadStatsDTO.DailyUploadStats();
             daily.setUploadDate(row.get("upload_date").toString());
             daily.setDateTime(((java.sql.Date) row.get("upload_date")).toLocalDate().atStartOfDay());
-            daily.setFileCount(((Number) row.get("file_count")).longValue());
-            daily.setTotalRecords(((Number) row.get("total_records")).longValue());
-            daily.setUniqueLocations(((Number) row.get("unique_locations")).intValue());
-            daily.setAverageQuality(((Number) row.get("avg_quality")).doubleValue());
+            daily.setFileCount(safeLongValue(row, "file_count"));
+            daily.setTotalRecords(safeLongValue(row, "total_records"));
+            daily.setUniqueLocations(safeIntValue(row, "unique_locations"));
+            daily.setAverageQuality(safeDoubleValue(row, "avg_quality"));
             daily.setCompletenessPercentage(85.0 + Math.random() * 10); // Mock completeness
             return daily;
         }).collect(Collectors.toList());
@@ -135,12 +136,12 @@ public class RealFileUploadStatisticsService {
             FileUploadStatsDTO.LocationUploadStats loc = new FileUploadStatsDTO.LocationUploadStats();
             loc.setLocationName((String) row.get("location_name"));
             loc.setSource2Code((String) row.get("source2_code"));
-            loc.setFileCount(((Number) row.get("file_count")).longValue());
-            loc.setTotalRecords(((Number) row.get("total_records")).longValue());
+            loc.setFileCount(safeLongValue(row, "file_count"));
+            loc.setTotalRecords(safeLongValue(row, "total_records"));
             loc.setFirstUpload(((java.sql.Timestamp) row.get("first_upload")).toLocalDateTime());
             loc.setLastUpload(((java.sql.Timestamp) row.get("last_upload")).toLocalDateTime());
-            loc.setAverageQuality(((Number) row.get("avg_quality")).doubleValue());
-            loc.setSuccessfulFiles(((Number) row.get("file_count")).longValue());
+            loc.setAverageQuality(safeDoubleValue(row, "avg_quality"));
+            loc.setSuccessfulFiles(safeLongValue(row, "file_count"));
             loc.setFailedFiles(0L);
             loc.setSuccessRate(100.0);
             loc.setStatus("ACTIVE");
@@ -163,14 +164,14 @@ public class RealFileUploadStatisticsService {
             """;
 
         List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, startDate, endDate);
-        long totalFiles = results.stream().mapToLong(r -> ((Number) r.get("file_count")).longValue()).sum();
+        long totalFiles = results.stream().mapToLong(r -> safeLongValue(r, "file_count")).sum();
 
         return results.stream().map(row -> {
             FileUploadStatsDTO.FileTypeStats type = new FileUploadStatsDTO.FileTypeStats();
             String source = (String) row.get("source2");
             type.setFileType(getFileTypeFromSource(source));
-            type.setFileCount(((Number) row.get("file_count")).longValue());
-            type.setTotalRecords(((Number) row.get("total_records")).longValue());
+            type.setFileCount(safeLongValue(row, "file_count"));
+            type.setTotalRecords(safeLongValue(row, "total_records"));
             type.setAverageProcessingTime(100.0 + Math.random() * 400); // Mock processing time
             type.setPercentage(totalFiles > 0 ? (type.getFileCount() * 100.0) / totalFiles : 0.0);
             return type;
@@ -192,12 +193,12 @@ public class RealFileUploadStatisticsService {
             """;
 
         List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, startDate, endDate);
-        long totalFiles = results.stream().mapToLong(r -> ((Number) r.get("file_count")).longValue()).sum();
+        long totalFiles = results.stream().mapToLong(r -> safeLongValue(r, "file_count")).sum();
 
         // Create map for easy lookup
         Map<Integer, Map<String, Object>> hourlyData = results.stream()
             .collect(Collectors.toMap(
-                r -> ((Number) r.get("hour")).intValue(),
+                r -> safeIntValue(r, "hour"),
                 r -> r
             ));
 
@@ -208,8 +209,8 @@ public class RealFileUploadStatisticsService {
 
             FileUploadStatsDTO.HourlyUploadPattern pattern = new FileUploadStatsDTO.HourlyUploadPattern();
             pattern.setHour(hour);
-            pattern.setFileCount(((Number) hourData.get("file_count")).longValue());
-            pattern.setTotalRecords(((Number) hourData.get("total_records")).longValue());
+            pattern.setFileCount(safeLongValue(hourData, "file_count"));
+            pattern.setTotalRecords(safeLongValue(hourData, "total_records"));
             pattern.setPercentage(totalFiles > 0 ? (pattern.getFileCount() * 100.0) / totalFiles : 0.0);
 
             // Determine peak indicator
@@ -244,10 +245,10 @@ public class RealFileUploadStatisticsService {
         return results.stream().map(row -> {
             FileUploadStatsDTO.ProcessingPerformanceStats perf = new FileUploadStatsDTO.ProcessingPerformanceStats();
             perf.setLocationName((String) row.get("location_name"));
-            perf.setFileCount(((Number) row.get("file_count")).longValue());
+            perf.setFileCount(safeLongValue(row, "file_count"));
 
             // Mock performance metrics based on data volume
-            double linesProcessed = ((Number) row.get("avg_lines_processed")).doubleValue();
+            double linesProcessed = safeDoubleValue(row, "avg_lines_processed");
             double avgTime = Math.max(50, linesProcessed / 100 + Math.random() * 200); // Realistic processing time
 
             perf.setAverageProcessingTime(avgTime);
@@ -290,7 +291,7 @@ public class RealFileUploadStatisticsService {
 
         return results.stream().map(row -> {
             String source2Code = (String) row.get("source2");
-            Integer mjdValue = ((Number) row.get("mjd")).intValue();
+            Integer mjdValue = safeIntValue(row, "mjd");
 
             FileUploadStatsDTO.RecentFileUpload recent = new FileUploadStatsDTO.RecentFileUpload();
             // Generate original file name format like GZLMFR60.878 instead of GZLMF1_MJD60878.dat
@@ -313,9 +314,9 @@ public class RealFileUploadStatisticsService {
             recent.setSource2Code(source2Code);
             recent.setMjd(mjdValue);
             recent.setUploadTimestamp(((java.sql.Timestamp) row.get("upload_timestamp")).toLocalDateTime());
-            recent.setTotalRecords(((Number) row.get("total_records")).intValue());
+            recent.setTotalRecords(safeIntValue(row, "total_records"));
             recent.setFileStatus("SUCCESS");
-            recent.setQualityScore(((Number) row.get("quality_score")).doubleValue());
+            recent.setQualityScore(safeDoubleValue(row, "quality_score"));
             recent.setSatellites(getSatelliteSystemFromSource(source2Code));
             recent.setProcessingTimeMs((long) (100 + Math.random() * 500));
             return recent;
@@ -377,5 +378,21 @@ public class RealFileUploadStatisticsService {
     LocalDateTime endDate = LocalDateTime.now();
     LocalDateTime startDate = endDate.minusDays(30);
     return generateFileUploadReport(startDate, endDate);
+    }
+
+    // Helper methods to safely extract values from query results
+    private long safeLongValue(Map<String, Object> map, String key) {
+        Number value = (Number) map.get(key);
+        return value != null ? value.longValue() : 0L;
+    }
+
+    private int safeIntValue(Map<String, Object> map, String key) {
+        Number value = (Number) map.get(key);
+        return value != null ? value.intValue() : 0;
+    }
+
+    private double safeDoubleValue(Map<String, Object> map, String key) {
+        Number value = (Number) map.get(key);
+        return value != null ? value.doubleValue() : 0.0;
     }
 }
