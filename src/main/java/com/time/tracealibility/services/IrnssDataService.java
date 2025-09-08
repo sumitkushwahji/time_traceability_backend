@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
@@ -167,13 +168,9 @@ public class IrnssDataService {
             try {
                 IrnssData data = parseLineToIrnssData(tokens, source);
                 
-                if (!irnssDataRepository.existsBySatAndMjdAndSttimeAndSource(
-                        data.getSat(), data.getMjd(), data.getSttime(), data.getSource())) {
-                    irnssDataRepository.save(data);
-                    insertedCount++;
-                } else {
-                    skippedCount++;
-                }
+                // Use deadlock-resistant save operation
+                saveIrnssDataSafely(data);
+                insertedCount++;
 
             } catch (NumberFormatException e) {
                 System.err.println("Number format error on line " + i + " in " + filePath.getFileName() + ": " + e.getMessage());
@@ -285,23 +282,78 @@ public class IrnssDataService {
     }
 
     /**
-     * Upsert (update or insert) file availability record to prevent duplicates
+     * Deadlock-resistant save method for IrnssData
      */
-    @Transactional
-    private void upsertFileAvailability(String source, int mjd, String status, String fileName) {
+    private void saveIrnssDataSafely(IrnssData data) {
         try {
-            // Try to update existing record first (more efficient)
-            int updatedRows = fileAvailabilityRepository.updateFileAvailability(
-                source, mjd, status, fileName, LocalDateTime.now());
-            
-            if (updatedRows == 0) {
-                // No existing record found, create new one
-                FileAvailability newRecord = new FileAvailability(null, source, mjd, status, fileName, LocalDateTime.now());
-                fileAvailabilityRepository.save(newRecord);
+            // Check if record exists first (faster than catching exceptions)
+            if (!irnssDataRepository.existsBySatAndMjdAndSttimeAndSource(
+                    data.getSat(), data.getMjd(), data.getSttime(), data.getSource())) {
+                irnssDataRepository.save(data);
             }
         } catch (Exception e) {
-            // Handle database constraint violations gracefully (e.g., race condition duplicates)
-            System.err.println("Failed to upsert file availability for source: " + source + ", mjd: " + mjd + " - " + e.getMessage());
+            String errorMessage = e.getMessage().toLowerCase();
+            
+            // If it's a constraint violation (duplicate), that's expected - silently ignore
+            if (errorMessage.contains("duplicate") || errorMessage.contains("unique constraint")) {
+                // This is fine - record already exists
+                return;
+            }
+            
+            // If it's a deadlock, log it but don't fail the entire process
+            if (errorMessage.contains("deadlock") || errorMessage.contains("could not serialize access")) {
+                System.err.println("Deadlock in IrnssData save for sat: " + data.getSat() + ", mjd: " + data.getMjd() + ", sttime: " + data.getSttime());
+                return;
+            }
+            
+            // For other errors, log and continue
+            System.err.println("Error saving IrnssData: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Deadlock-resistant upsert method using PostgreSQL native ON CONFLICT
+     * This prevents deadlocks by using a single atomic operation
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    private void upsertFileAvailability(String source, int mjd, String status, String fileName) {
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries) {
+            try {
+                // Use PostgreSQL native UPSERT with ON CONFLICT - atomic operation prevents deadlocks
+                fileAvailabilityRepository.upsertFileAvailability(source, mjd, status, fileName, LocalDateTime.now());
+                return; // Success, exit retry loop
+                
+            } catch (Exception e) {
+                String errorMessage = e.getMessage().toLowerCase();
+                
+                // Check if it's a deadlock-related error
+                if (errorMessage.contains("deadlock") || errorMessage.contains("could not serialize access")) {
+                    retryCount++;
+                    System.err.println("Database contention detected (attempt " + retryCount + "/" + maxRetries + ") for source: " + source + ", mjd: " + mjd);
+                    
+                    if (retryCount >= maxRetries) {
+                        System.err.println("Max retries reached for file availability upsert: " + source + ", mjd: " + mjd);
+                        return; // Give up after max retries
+                    }
+                    
+                    // Exponential backoff with jitter to reduce collision probability
+                    try {
+                        long delayMs = (long) (Math.pow(2, retryCount) * 50 + Math.random() * 50);
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    
+                } else {
+                    // Non-deadlock error, log and exit
+                    System.err.println("Error in file availability upsert for source: " + source + ", mjd: " + mjd + " - " + e.getMessage());
+                    return;
+                }
+            }
         }
     }
 

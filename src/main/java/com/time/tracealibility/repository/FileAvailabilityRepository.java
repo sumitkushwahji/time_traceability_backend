@@ -32,5 +32,20 @@ public interface FileAvailabilityRepository extends JpaRepository<FileAvailabili
                               @Param("status") String status, 
                               @Param("fileName") String fileName, 
                               @Param("timestamp") LocalDateTime timestamp);
+
+    @Modifying
+    @Transactional
+    @Query(value = "INSERT INTO file_availability (source, mjd, status, file_name, timestamp) " +
+                   "VALUES (:source, :mjd, :status, :fileName, :timestamp) " +
+                   "ON CONFLICT (source, mjd) DO UPDATE SET " +
+                   "status = EXCLUDED.status, " +
+                   "file_name = EXCLUDED.file_name, " +
+                   "timestamp = EXCLUDED.timestamp", 
+           nativeQuery = true)
+    void upsertFileAvailability(@Param("source") String source,
+                               @Param("mjd") int mjd,
+                               @Param("status") String status,
+                               @Param("fileName") String fileName,
+                               @Param("timestamp") LocalDateTime timestamp);
 }
 
