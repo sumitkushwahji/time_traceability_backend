@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -44,8 +45,7 @@ public class IrnssDataService {
             
             Files.list(Paths.get(parentFolder))
                     .filter(Files::isDirectory)
-                    .parallel() // Process directories in parallel
-                    .forEach(this::processLocationFolder);
+                    .forEach(this::processLocationFolder); // Remove .parallel() to reduce race conditions
                     
             long duration = System.currentTimeMillis() - startTime;
             System.out.println("✅ File monitoring completed in: " + duration + "ms");
@@ -85,11 +85,9 @@ public class IrnssDataService {
                         // Track MJDs by source for missing file detection
                         sourceToMjdMap.computeIfAbsent(fileInfo.source, k -> new HashSet<>()).add(fileInfo.mjd);
                         
-                        // Use source from filename, not folder name
-                        fileAvailabilityRepository.save(
-                                new FileAvailability(null, fileInfo.source, fileInfo.mjd, "AVAILABLE",
-                                        filePath.getFileName().toString(), LocalDateTime.now())
-                        );
+                        // Use source from filename, not folder name - Use upsert logic
+                        upsertFileAvailability(fileInfo.source, fileInfo.mjd, "AVAILABLE", 
+                                filePath.getFileName().toString());
                         processLiveFile(filePath, fileInfo.source, fileInfo.mjd);
                     }
                 } catch (Exception e) {
@@ -106,9 +104,7 @@ public class IrnssDataService {
                     if (!sourceMjds.contains(i)) {
                         Optional<FileAvailability> existing = fileAvailabilityRepository.findBySourceAndMjd(source, i);
                         if (existing.isEmpty()) {
-                            fileAvailabilityRepository.save(
-                                    new FileAvailability(null, source, i, "MISSING", null, LocalDateTime.now())
-                            );
+                            upsertFileAvailability(source, i, "MISSING", null);
                         }
                     }
                 }
@@ -285,6 +281,27 @@ public class IrnssDataService {
         FileInfo(String source, int mjd) {
             this.source = source;
             this.mjd = mjd;
+        }
+    }
+
+    /**
+     * Upsert (update or insert) file availability record to prevent duplicates
+     */
+    @Transactional
+    private void upsertFileAvailability(String source, int mjd, String status, String fileName) {
+        try {
+            // Try to update existing record first (more efficient)
+            int updatedRows = fileAvailabilityRepository.updateFileAvailability(
+                source, mjd, status, fileName, LocalDateTime.now());
+            
+            if (updatedRows == 0) {
+                // No existing record found, create new one
+                FileAvailability newRecord = new FileAvailability(null, source, mjd, status, fileName, LocalDateTime.now());
+                fileAvailabilityRepository.save(newRecord);
+            }
+        } catch (Exception e) {
+            // Handle database constraint violations gracefully (e.g., race condition duplicates)
+            System.err.println("Failed to upsert file availability for source: " + source + ", mjd: " + mjd + " - " + e.getMessage());
         }
     }
 

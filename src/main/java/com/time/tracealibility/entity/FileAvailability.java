@@ -8,7 +8,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "file_availability")
+@Table(name = "file_availability", 
+       uniqueConstraints = @UniqueConstraint(columnNames = {"source", "mjd"}))
 public class FileAvailability {
 
     @Id
