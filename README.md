@@ -398,9 +398,30 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For support and questions:
-- Create an issue in the repository
-- Contact the development team
-- Check the project wiki for detailed documentation
+- **📚 Documentation**: Check the [Project Wiki](wiki/) for comprehensive guides
+- **❓ Quick Help**: Review [FAQ](wiki/FAQ.md) for common questions  
+- **🔧 Issues**: See [Troubleshooting Guide](wiki/Troubleshooting.md)
+- **📋 Bug Reports**: Create an issue in the repository
+- **💬 Contact**: Reach out to the development team
+
+## 📚 Project Wiki
+
+Our comprehensive documentation is available in the [project wiki](wiki/):
+
+### 🚀 Quick Access
+- **[Quick Start Guide](wiki/Quick-Start-Guide.md)** - Get running in 5 minutes
+- **[API Reference](wiki/API-Reference.md)** - Complete API documentation
+- **[Troubleshooting](wiki/Troubleshooting.md)** - Common issues and solutions
+- **[System Architecture](wiki/System-Architecture.md)** - Technical overview
+
+### 📖 Full Documentation
+Visit the **[Wiki Home](wiki/Home.md)** for the complete documentation index covering:
+- Installation and configuration guides
+- System architecture and database design  
+- Development workflows and coding standards
+- Performance optimization and monitoring
+- Data processing logic and file handling
+- FAQ and glossary of technical terms
 
 ---
 
