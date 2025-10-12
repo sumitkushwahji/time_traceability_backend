@@ -17,8 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,11 +45,11 @@ public class IrnssDataService {
         try {
             long startTime = System.currentTimeMillis();
             System.out.println("🔍 Starting file monitoring at: " + LocalDateTime.now());
-            
+
             Files.list(Paths.get(parentFolder))
                     .filter(Files::isDirectory)
                     .forEach(this::processLocationFolder); // Remove .parallel() to reduce race conditions
-                    
+
             long duration = System.currentTimeMillis() - startTime;
             System.out.println("✅ File monitoring completed in: " + duration + "ms");
         } catch (IOException e) {
@@ -81,15 +83,27 @@ public class IrnssDataService {
                 try {
                     FileInfo fileInfo = extractSourceAndMJD(filePath.getFileName().toString());
                     if (fileInfo != null) {
-                        foundMjdSet.add(fileInfo.mjd);
-                        
+
+                      LocalDateTime creationTime = null;
+                      try {
+                        BasicFileAttributes attrs = Files.readAttributes(filePath, BasicFileAttributes.class);
+                        creationTime = LocalDateTime.ofInstant(attrs.creationTime().toInstant(), ZoneId.systemDefault());
+                      } catch (IOException e) {
+                        System.err.println("Could not read creation time for: " + filePath.getFileName());
+                      }
+
+                      foundMjdSet.add(fileInfo.mjd);
+
                         // Track MJDs by source for missing file detection
                         sourceToMjdMap.computeIfAbsent(fileInfo.source, k -> new HashSet<>()).add(fileInfo.mjd);
-                        
+
                         // Use source from filename, not folder name - Use upsert logic
-                        upsertFileAvailability(fileInfo.source, fileInfo.mjd, "AVAILABLE", 
-                                filePath.getFileName().toString());
-                        processLiveFile(filePath, fileInfo.source, fileInfo.mjd);
+                      upsertFileAvailability(fileInfo.source, fileInfo.mjd, "AVAILABLE",
+                        filePath.getFileName().toString(),
+                        creationTime,
+                        LocalDateTime.now()); // <-- UPDATE THIS LINE
+
+                      processLiveFile(filePath, fileInfo.source, fileInfo.mjd);
                     }
                 } catch (Exception e) {
                     System.err.println("Error processing file " + filePath.getFileName() + ": " + e.getMessage());
@@ -98,18 +112,20 @@ public class IrnssDataService {
             }
 
             // Missing file detection logic - check for each source found in files
-            int todayMjd = (int) ChronoUnit.DAYS.between(LocalDate.of(1858, 11, 17), LocalDate.now());
-            for (String source : sourceToMjdMap.keySet()) {
-                Set<Integer> sourceMjds = sourceToMjdMap.get(source);
-                for (int i = todayMjd - 3; i <= todayMjd; i++) {
-                    if (!sourceMjds.contains(i)) {
-                        Optional<FileAvailability> existing = fileAvailabilityRepository.findBySourceAndMjd(source, i);
-                        if (existing.isEmpty()) {
-                            upsertFileAvailability(source, i, "MISSING", null);
-                        }
-                    }
+          // Missing file detection logic - check for each source found in files
+          int todayMjd = (int) ChronoUnit.DAYS.between(LocalDate.of(1858, 11, 17), LocalDate.now());
+          for (String source : sourceToMjdMap.keySet()) {
+            Set<Integer> sourceMjds = sourceToMjdMap.get(source);
+            for (int i = todayMjd - 3; i <= todayMjd; i++) {
+              if (!sourceMjds.contains(i)) {
+                Optional<FileAvailability> existing = fileAvailabilityRepository.findBySourceAndMjd(source, i);
+                if (existing.isEmpty()) {
+                  // FIX: Pass null for creationTime and LocalDateTime.now() for the last checked time.
+                  upsertFileAvailability(source, i, "MISSING", null, null, LocalDateTime.now());
                 }
+              }
             }
+          }
 
         } catch (IOException e) {
             System.err.println("Error processing location folder " + locationFolder + ": " + e.getMessage());
@@ -167,7 +183,7 @@ public class IrnssDataService {
 
             try {
                 IrnssData data = parseLineToIrnssData(tokens, source);
-                
+
                 // Use deadlock-resistant save operation
                 saveIrnssDataSafely(data);
                 insertedCount++;
@@ -248,17 +264,17 @@ public class IrnssDataService {
 
     private FileInfo extractSourceAndMJD(String filename) {
         if (filename.length() < 7) return null;
-        
+
         // Extract source (first 6 characters)
         String source = filename.substring(0, 6);
-        
+
         // For files like GZLI2P60.866, we need to extract 60866 as MJD
         // Look for the pattern after the source: number.number
         String remainingPart = filename.substring(6);
-        
+
         // Remove all non-digits and concatenate them
         String allDigits = remainingPart.replaceAll("[^0-9]", "");
-        
+
         try {
             if (!allDigits.isEmpty()) {
                 int mjd = Integer.parseInt(allDigits);
@@ -267,7 +283,7 @@ public class IrnssDataService {
         } catch (NumberFormatException e) {
             System.err.println("Error parsing MJD from filename: " + filename);
         }
-        
+
         return null;
     }
 
@@ -293,19 +309,19 @@ public class IrnssDataService {
             }
         } catch (Exception e) {
             String errorMessage = e.getMessage().toLowerCase();
-            
+
             // If it's a constraint violation (duplicate), that's expected - silently ignore
             if (errorMessage.contains("duplicate") || errorMessage.contains("unique constraint")) {
                 // This is fine - record already exists
                 return;
             }
-            
+
             // If it's a deadlock, log it but don't fail the entire process
             if (errorMessage.contains("deadlock") || errorMessage.contains("could not serialize access")) {
                 System.err.println("Deadlock in IrnssData save for sat: " + data.getSat() + ", mjd: " + data.getMjd() + ", sttime: " + data.getSttime());
                 return;
             }
-            
+
             // For other errors, log and continue
             System.err.println("Error saving IrnssData: " + e.getMessage());
         }
@@ -316,29 +332,34 @@ public class IrnssDataService {
      * This prevents deadlocks by using a single atomic operation
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    private void upsertFileAvailability(String source, int mjd, String status, String fileName) {
-        int maxRetries = 3;
+    private void upsertFileAvailability(String source, int mjd, String status, String fileName, LocalDateTime fileCreationTime, LocalDateTime lastCheckedTimestamp) {
+
+      int maxRetries = 3;
         int retryCount = 0;
-        
+
         while (retryCount < maxRetries) {
             try {
                 // Use PostgreSQL native UPSERT with ON CONFLICT - atomic operation prevents deadlocks
-                fileAvailabilityRepository.upsertFileAvailability(source, mjd, status, fileName, LocalDateTime.now());
-                return; // Success, exit retry loop
-                
+              fileAvailabilityRepository.upsertFileAvailability(
+                source, mjd, status, fileName,
+                fileCreationTime,
+                lastCheckedTimestamp
+              );
+              return; // Success, exit retry loop
+
             } catch (Exception e) {
                 String errorMessage = e.getMessage().toLowerCase();
-                
+
                 // Check if it's a deadlock-related error
                 if (errorMessage.contains("deadlock") || errorMessage.contains("could not serialize access")) {
                     retryCount++;
                     System.err.println("Database contention detected (attempt " + retryCount + "/" + maxRetries + ") for source: " + source + ", mjd: " + mjd);
-                    
+
                     if (retryCount >= maxRetries) {
                         System.err.println("Max retries reached for file availability upsert: " + source + ", mjd: " + mjd);
                         return; // Give up after max retries
                     }
-                    
+
                     // Exponential backoff with jitter to reduce collision probability
                     try {
                         long delayMs = (long) (Math.pow(2, retryCount) * 50 + Math.random() * 50);
@@ -347,7 +368,7 @@ public class IrnssDataService {
                         Thread.currentThread().interrupt();
                         return;
                     }
-                    
+
                 } else {
                     // Non-deadlock error, log and exit
                     System.err.println("Error in file availability upsert for source: " + source + ", mjd: " + mjd + " - " + e.getMessage());

@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "file_availability", 
+@Table(name = "file_availability",
        uniqueConstraints = @UniqueConstraint(columnNames = {"source", "mjd"}))
 public class FileAvailability {
 
@@ -21,31 +21,27 @@ public class FileAvailability {
     private String status; // AVAILABLE, MISSING, LATE
     private String fileName;
 
-    private LocalDateTime timestamp; // when it was seen
+  @Column(name = "file_creation_time", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+  private LocalDateTime fileCreationTime;
 
-    public FileAvailability(Long id, String source, int mjd, String status, String fileName, LocalDateTime timestamp) {
-        this.id = id;
-        this.source = source;
-        this.mjd = mjd;
-        this.status = status;
-        this.fileName = fileName;
-        this.timestamp = timestamp;
-    }
+  @Column(name = "last_checked_timestamp", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+  private LocalDateTime lastCheckedTimestamp;
+
+  public FileAvailability(Long id, String source, int mjd, String status, String fileName, LocalDateTime fileCreationTime, LocalDateTime lastCheckedTimestamp) {
+    this.id = id;
+    this.source = source;
+    this.mjd = mjd;
+    this.status = status;
+    this.fileName = fileName;
+    this.fileCreationTime = fileCreationTime; // <-- ADD THIS
+    this.lastCheckedTimestamp = lastCheckedTimestamp; // <-- RENAME THIS
+  }
 
     public FileAvailability() {
     }
 
-    @Override
-    public String toString() {
-        return "FileAvailability{" +
-                "id=" + id +
-                ", source='" + source + '\'' +
-                ", mjd=" + mjd +
-                ", status='" + status + '\'' +
-                ", fileName='" + fileName + '\'' +
-                ", timestamp=" + timestamp +
-                '}';
-    }
+
+
 
     public Long getId() {
         return id;
@@ -87,14 +83,21 @@ public class FileAvailability {
         this.fileName = fileName;
     }
 
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
+  public LocalDateTime getFileCreationTime() { // <-- ADD THIS
+    return fileCreationTime;
+  }
 
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
+  public void setFileCreationTime(LocalDateTime fileCreationTime) { // <-- ADD THIS
+    this.fileCreationTime = fileCreationTime;
+  }
 
+  public LocalDateTime getLastCheckedTimestamp() { // <-- RENAME THIS
+    return lastCheckedTimestamp;
+  }
+
+  public void setLastCheckedTimestamp(LocalDateTime lastCheckedTimestamp) { // <-- RENAME THIS
+    this.lastCheckedTimestamp = lastCheckedTimestamp;
+  }
     // getters and setters
 
 }

@@ -4,7 +4,10 @@ import com.time.tracealibility.dto.FileStatusDTO;
 import com.time.tracealibility.entity.FileAvailability;
 import com.time.tracealibility.repository.FileAvailabilityRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+
+import java.time.LocalDateTime;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,7 +26,12 @@ public class StatusController {
     @Autowired
     private FileAvailabilityRepository fileAvailabilityRepository;
 
+    @Value("${irnss.parent-folder}")
+    private String parentFolder;
+
     private static final LocalDate MJD_EPOCH = LocalDate.of(1858, 11, 17);
+
+    // File creation time is now handled in the service layer
 
     @GetMapping("/file-availability")
     public ResponseEntity<List<FileStatusDTO>> getFileAvailability(
@@ -37,11 +45,27 @@ public class StatusController {
 
         List<FileAvailability> availabilities = fileAvailabilityRepository.findBySourceInAndMjdBetween(sources, startMjd, endMjd);
 
-        List<FileStatusDTO> dtos = availabilities.stream()
-                .map(fa -> new FileStatusDTO(fa.getSource(), fa.getMjd(), fa.getStatus(), fa.getFileName(), fa.getTimestamp()))
-                .collect(Collectors.toList());
+        System.out.println("Parent folder configured as: " + parentFolder);
+        availabilities.forEach(fa -> {
+            System.out.println("Processing record - Source: " + fa.getSource() + 
+                             ", MJD: " + fa.getMjd() + 
+                             ", Filename: " + fa.getFileName() +
+                             ", Last Checked: " + fa.getLastCheckedTimestamp() +
+                             ", Creation Time: " + fa.getFileCreationTime());
+        });
 
-        return ResponseEntity.ok(dtos);
+        return ResponseEntity.ok(availabilities.stream()
+                .map(fa -> new FileStatusDTO(
+                    fa.getSource(),
+                    fa.getMjd(),
+                    fa.getStatus(),
+                    fa.getFileName(),
+                    fa.getLastCheckedTimestamp(),
+                    fa.getFileCreationTime()
+                ))
+                .collect(Collectors.toList()));
+
+
     }
 }
 

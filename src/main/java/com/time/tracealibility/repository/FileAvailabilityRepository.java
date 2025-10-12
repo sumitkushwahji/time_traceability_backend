@@ -23,29 +23,21 @@ public interface FileAvailabilityRepository extends JpaRepository<FileAvailabili
             @Param("endMjd") int endMjd
     );
 
-    @Modifying
-    @Transactional
-    @Query("UPDATE FileAvailability fa SET fa.status = :status, fa.fileName = :fileName, fa.timestamp = :timestamp " +
-           "WHERE fa.source = :source AND fa.mjd = :mjd")
-    int updateFileAvailability(@Param("source") String source, 
-                              @Param("mjd") int mjd, 
-                              @Param("status") String status, 
-                              @Param("fileName") String fileName, 
-                              @Param("timestamp") LocalDateTime timestamp);
-
-    @Modifying
-    @Transactional
-    @Query(value = "INSERT INTO file_availability (source, mjd, status, file_name, timestamp) " +
-                   "VALUES (:source, :mjd, :status, :fileName, :timestamp) " +
-                   "ON CONFLICT (source, mjd) DO UPDATE SET " +
-                   "status = EXCLUDED.status, " +
-                   "file_name = EXCLUDED.file_name, " +
-                   "timestamp = EXCLUDED.timestamp", 
-           nativeQuery = true)
-    void upsertFileAvailability(@Param("source") String source,
-                               @Param("mjd") int mjd,
-                               @Param("status") String status,
-                               @Param("fileName") String fileName,
-                               @Param("timestamp") LocalDateTime timestamp);
+  @Modifying
+  @Transactional
+  @Query(value = "INSERT INTO file_availability (source, mjd, status, file_name, file_creation_time, last_checked_timestamp) " + // <-- Add new columns
+    "VALUES (:source, :mjd, :status, :fileName, :fileCreationTime, :lastCheckedTimestamp) " + // <-- Add new values
+    "ON CONFLICT (source, mjd) DO UPDATE SET " +
+    "status = EXCLUDED.status, " +
+    "file_name = EXCLUDED.file_name, " +
+    "file_creation_time = EXCLUDED.file_creation_time, " + // <-- Update on conflict
+    "last_checked_timestamp = EXCLUDED.last_checked_timestamp", // <-- Update on conflict
+    nativeQuery = true)
+  void upsertFileAvailability(@Param("source") String source,
+                              @Param("mjd") int mjd,
+                              @Param("status") String status,
+                              @Param("fileName") String fileName,
+                              @Param("fileCreationTime") LocalDateTime fileCreationTime, // <-- Add parameter
+                              @Param("lastCheckedTimestamp") LocalDateTime lastCheckedTimestamp); // <-- Rename for clarity
 }
 
